@@ -11,7 +11,7 @@ KM-Edge must run on iOS and Android phones and tablets. Two viable paths:
 | Option | Pros | Cons |
 |---|---|---|
 | **PWA** (Progressive Web App — React/TypeScript, runs in browser) | Shares tech stack with GKS frontend (React 19, TypeScript, TailwindCSS). Single codebase for all platforms. No app store required. Easy to update. | Limited Bluetooth access (F8 is future but ruled out here). Calendar/alarm access is limited on iOS PWA. Storage API (OPFS) is sandboxed, harder to use with cloud drive SDKs. No biometric auth API on all platforms. |
-| **React Native** | Full native API access: calendar, Bluetooth, biometrics, Keychain/Keystore, background sync. One codebase for iOS + Android. Shares component logic with React web. | Different from GKS frontend stack (though same language). Requires app store distribution. Build tooling overhead. |
+| **React Native** | Full native API access: calendar, Bluetooth, biometrics, Keychain/Keystore, background sync. One codebase for iOS + Android. Shares component logic with React web. | Different from GKS frontend stack (though same language). Build tooling overhead (mitigated by EAS Build). |
 | **Flutter** | Excellent native API access. Strong offline/SQLite story. | Different language (Dart). No shared code with GKS frontend. |
 
 ## Decision
@@ -25,7 +25,11 @@ KM-Edge must run on iOS and Android phones and tablets. Two viable paths:
 
 **Build infrastructure:** Expo EAS Build (free tier). Runs on Windows and Ubuntu — no Mac required. iOS builds run on Expo's cloud infrastructure. Android builds can run locally or on EAS.
 
-**Distribution:** TestFlight (iOS) + direct APK sideload (Android) for private family use. No public app store submission required.
+**Distribution:** Private only — no public app store submission.
+- **iOS:** TestFlight. Invite specific users by email. Never publicly listed. No Apple App Store review.
+- **Android:** Direct APK sideload. Send `.apk` to the device. No Google Play Store involved.
+
+This is a deliberate decision for a private family app with a known, small set of users. EAS Build produces standard `.ipa` and `.apk`/`.aab` artifacts — publishing to a public store remains an option in the future and requires no rebuild, only a store submission step at that time.
 
 ## Key Expo libraries
 
