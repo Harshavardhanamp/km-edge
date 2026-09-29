@@ -1,5 +1,5 @@
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
   Alert,
   ScrollView,
@@ -9,9 +9,13 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import AttachmentSourceSheet from '../components/AttachmentSourceSheet';
+import AttachmentStrip from '../components/AttachmentStrip';
 import MarkdownView from '../components/MarkdownView';
 import TypePickerSheet from '../components/TypePickerSheet';
 import { sha256String } from '../lib/crypto';
+import { addAttachment, getAttachments, removeAttachment, type IncomingFile } from '../lib/attachments/attachmentService';
+import type { AttachmentMeta } from '../lib/db/attachmentStore';
 import {
   getRecord,
   softDeleteRecord,
@@ -35,7 +39,14 @@ export default function RecordDetailScreen({ navigation, route }: Props) {
   const [editingContent, setEditingContent] = useState(false);
   const [content, setContent] = useState('');
   const [showTypePicker, setShowTypePicker] = useState(false);
+  const [showAttachSource, setShowAttachSource] = useState(false);
+  const [attachments, setAttachments] = useState<AttachmentMeta[]>([]);
+  const [attachError, setAttachError] = useState<string | null>(null);
   const [dirty, setDirty] = useState(false);
+
+  const refreshAttachments = useCallback(() => {
+    setAttachments(getAttachments(edge_id));
+  }, [edge_id]);
 
   useEffect(() => {
     const r = getRecord(edge_id);
@@ -44,7 +55,8 @@ export default function RecordDetailScreen({ navigation, route }: Props) {
       setTitle(r.title);
       setContent(r.content);
     }
-  }, [edge_id]);
+    refreshAttachments();
+  }, [edge_id, refreshAttachments]);
 
   if (!record) {
     return (
@@ -177,11 +189,14 @@ export default function RecordDetailScreen({ navigation, route }: Props) {
           <Text style={styles.metaLine}>Life areas: {record.life_areas.join(', ')}</Text>
         )}
 
-        {/* Attachment placeholder — wired in attachment sprint */}
-        <View style={styles.attachmentPlaceholder}>
-          <Text style={styles.attachmentTitle}>Attachments (0)</Text>
-          <Text style={styles.attachmentHint}>Coming in Sprint 5</Text>
-        </View>
+        <AttachmentStrip
+          attachments={attachments}
+          onAdd={() => setShowAttachSource(true)}
+          onRemove={async (id) => {
+            await removeAttachment(edge_id, id);
+            refreshAttachments();
+          }}
+        />
       </ScrollView>
 
       <TypePickerSheet
@@ -192,6 +207,19 @@ export default function RecordDetailScreen({ navigation, route }: Props) {
           telemetry.action('record_type_change', { edge_id, new_type: type });
         }}
         onDismiss={() => setShowTypePicker(false)}
+      />
+
+      <AttachmentSourceSheet
+        visible={showAttachSource}
+        onFile={async (file: IncomingFile) => {
+          const result = await addAttachment(edge_id, file);
+          if (!result.ok) {
+            setAttachError(result.reason);
+          } else {
+            refreshAttachments();
+          }
+        }}
+        onDismiss={() => setShowAttachSource(false)}
       />
     </>
   );
@@ -248,16 +276,4 @@ const styles = StyleSheet.create({
     textAlignVertical: 'top',
   },
   metaLine: { fontSize: 13, color: '#7A6A5A', marginTop: 8 },
-  attachmentPlaceholder: {
-    marginTop: 24,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: 8,
-    borderStyle: 'dashed',
-    alignItems: 'center',
-    gap: 4,
-  },
-  attachmentTitle: { fontSize: 14, fontWeight: '600', color: colors.text },
-  attachmentHint: { fontSize: 12, color: '#A09080' },
 });
