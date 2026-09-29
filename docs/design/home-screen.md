@@ -1,9 +1,9 @@
 # Design: Home Screen
 
 **Date:** 2026-09-29  
-**Status:** Accepted  
+**Status:** Frozen  
 **Author:** Harshavardhana P  
-**Related:** REQ-0002 F4, ADR-0002
+**Related:** REQ-0002 F4, ADR-0002, ADR-0009, ADR-0010
 
 ---
 
@@ -48,11 +48,12 @@
 | Element | Detail |
 |---|---|
 | Left | User display name (from GKS login, cached locally) |
-| Right | `🟢 GKS · <time ago>` when online and recently synced |
-| Right | `🔴 Offline · <N> pending` when GKS unreachable |
-| Right | `🟡 Syncing…` during active sync |
+| Right | `🟢 GKS reachable` when health probe succeeds |
+| Right | `🔴 GKS unreachable` when health probe fails |
 
-GKS availability checked by probing `GET <gks>/api/v1/health` via Tailscale. Probe interval: every 60 seconds when app is in foreground. Status dot tappable — opens sync detail screen.
+**V1 only:** No sync info (last synced, pending count, syncing state) — sync does not exist in V1. These states added in V2 (ADR-0010).
+
+GKS availability checked by probing `GET <gks>/api/v1/health` via Tailscale. Probe interval: every 60 seconds when app is in foreground. Status dot tappable — opens a simple status detail screen (shows server URL, reachable/unreachable, no sync info in V1).
 
 ---
 
@@ -92,10 +93,11 @@ User picks type → navigates to the record creation screen for that type.
 
 ### Recent Records
 
-- **Source:** Local cloud-drive store (last 5 records by `captured_at` descending)
+- **Source:** Local SQLite store (last 5 records by `captured_at` descending) — ADR-0009
 - **Works offline:** Yes — reads from locally cached records
 - **Each row shows:** Type icon · Title (truncated to ~35 chars) · relative time
-- **Tap:** Opens the record detail/edit screen
+- **Tap:** Opens record detail/edit screen (read + edit in same screen, no separate edit view)
+- **Sync badge:** Not shown in V1 — all records are local, badge added in V2
 - **Footer:** "See all records →" navigates to full record list
 
 #### Type Icons
@@ -146,6 +148,6 @@ Capture button also accessible from Records tab (floating action button).
 | Display name | Cached from login | ✅ |
 | GKS status + last sync time | Probe + local state.json | 🟡 probe fails gracefully |
 | Upcoming events (next 7 days) | Device calendar | ✅ |
-| Last 5 records | Local cloud drive cache | ✅ |
+| Last 5 records | Local SQLite (ADR-0009) | ✅ |
 
 Home screen must be fully renderable offline. No spinner blocking the UI — stale data with a "last updated" label is always preferred over a loading state.
