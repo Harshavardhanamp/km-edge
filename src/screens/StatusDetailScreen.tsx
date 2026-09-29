@@ -1,7 +1,9 @@
 import React, { useEffect, useState } from 'react';
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useGksProbe } from '../lib/gksProbe';
+import { db } from '../lib/db/index';
 import { KEYS, get } from '../lib/secureStore';
+import { runSync, type SyncResult } from '../lib/sync/syncEngine';
 import { useScreenTracking } from '../lib/useScreenTracking';
 
 export default function StatusDetailScreen({ navigation }: any) {
@@ -9,14 +11,31 @@ export default function StatusDetailScreen({ navigation }: any) {
 
   const { reachable, lastProbeAt } = useGksProbe();
   const [gksUrl, setGksUrl] = useState<string>('');
+  const [pendingCount, setPendingCount] = useState(0);
+  const [syncing, setSyncing] = useState(false);
+  const [lastResult, setLastResult] = useState<SyncResult | null>(null);
 
   useEffect(() => {
     get(KEYS.GKS_SERVER_URL).then((u) => setGksUrl(u ?? '—'));
+    refreshPending();
   }, []);
 
-  const probeLabel = lastProbeAt
-    ? `Last checked ${relTime(lastProbeAt)}`
-    : 'Checking…';
+  function refreshPending() {
+    const row = db.getFirstSync<{ n: number }>(
+      `SELECT COUNT(*) AS n FROM delta_log WHERE status = 'PENDING'`
+    );
+    setPendingCount(row?.n ?? 0);
+  }
+
+  async function handleSync() {
+    setSyncing(true);
+    const result = await runSync();
+    setLastResult(result);
+    setSyncing(false);
+    refreshPending();
+  }
+
+  const probeLabel = lastProbeAt ? `Last checked ${relTime(lastProbeAt)}` : 'Checking…';
 
   return (
     <View style={styles.container}>
@@ -34,9 +53,7 @@ export default function StatusDetailScreen({ navigation }: any) {
 
       <View style={styles.row}>
         <Text style={styles.label}>Status</Text>
-        <Text style={styles.value}>
-          {reachable ? '🟢 Reachable' : '🔴 Unreachable'}
-        </Text>
+        <Text style={styles.value}>{reachable ? '🟢 Reachable' : '🔴 Unreachable'}</Text>
       </View>
 
       <View style={styles.row}>
@@ -44,7 +61,30 @@ export default function StatusDetailScreen({ navigation }: any) {
         <Text style={styles.value}>{probeLabel}</Text>
       </View>
 
-      <Text style={styles.note}>Sync status and pending count added in V2.</Text>
+      <View style={styles.row}>
+        <Text style={styles.label}>Pending deltas</Text>
+        <Text style={styles.value}>{pendingCount}</Text>
+      </View>
+
+      {lastResult && (
+        <View style={styles.row}>
+          <Text style={styles.label}>Last sync</Text>
+          <Text style={styles.value}>
+            {lastResult.synced} synced · {lastResult.failed} failed · {lastResult.telemetryFlushed} events sent
+          </Text>
+        </View>
+      )}
+
+      <TouchableOpacity
+        style={[styles.syncBtn, (!reachable || syncing) && styles.syncBtnDisabled]}
+        onPress={handleSync}
+        disabled={!reachable || syncing}
+      >
+        {syncing
+          ? <ActivityIndicator color="#FFF" />
+          : <Text style={styles.syncBtnText}>Sync now</Text>
+        }
+      </TouchableOpacity>
     </View>
   );
 }
@@ -77,5 +117,13 @@ const styles = StyleSheet.create({
   },
   label: { fontSize: 14, color: '#7A6A5A' },
   value: { fontSize: 14, color: colors.text, fontWeight: '500', flex: 1, textAlign: 'right' },
-  note: { fontSize: 12, color: '#A09080', marginTop: 20 },
+  syncBtn: {
+    marginTop: 24,
+    backgroundColor: colors.accent,
+    borderRadius: 8,
+    paddingVertical: 14,
+    alignItems: 'center',
+  },
+  syncBtnDisabled: { opacity: 0.4 },
+  syncBtnText: { color: '#FFF', fontWeight: '600', fontSize: 15 },
 });

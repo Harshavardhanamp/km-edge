@@ -12,13 +12,13 @@ ErrorUtils.setGlobalHandler((error: Error, isFatal?: boolean) => {
 });
 
 function AppInner() {
-  const { userId, tenantId, sessionValid } = useAuth();
+  const { userId, sessionValid } = useAuth();
 
   useEffect(() => {
     if (sessionValid) {
-      telemetryInit(userId, tenantId);
+      telemetryInit(userId);
     }
-  }, [sessionValid, userId, tenantId]);
+  }, [sessionValid, userId]);
 
   return <RootNavigator />;
 }

@@ -76,7 +76,7 @@ export default function LoginScreen({ navigation, route }: Props) {
     await set(KEYS.OFFLINE_ATTEMPT_COUNT, '0');
 
     setLoading(false);
-    authLogin({ userId: username.trim(), tenantId: '' });
+    authLogin({ userId: result.userId });
   }
 
   async function handleOfflineLogin() {
@@ -104,7 +104,7 @@ export default function LoginScreen({ navigation, route }: Props) {
     if (ok) {
       await set(KEYS.OFFLINE_ATTEMPT_COUNT, '0');
       const storedUsername = await get(KEYS.GKS_USERNAME);
-      authLogin({ userId: storedUsername ?? '', tenantId: '', offline: true });
+      authLogin({ userId: storedUsername ?? '', offline: true });
     } else {
       const next = attempts + 1;
       await set(KEYS.OFFLINE_ATTEMPT_COUNT, String(next));

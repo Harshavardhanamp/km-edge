@@ -1,7 +1,6 @@
 import * as Calendar from 'expo-calendar';
 import * as SecureStore from './secureStore';
-
-const SELECTED_IDS_KEY = 'calendar_selected_ids';
+import { KEYS } from './secureStore';
 
 export interface CalendarEvent {
   nativeId: string;
@@ -41,7 +40,7 @@ export async function getAllCalendars(): Promise<DeviceCalendar[]> {
 }
 
 export async function getSelectedCalendarIds(): Promise<string[]> {
-  const stored = await SecureStore.get(SELECTED_IDS_KEY);
+  const stored = await SecureStore.get(KEYS.CALENDAR_SELECTED_IDS);
   if (stored) return JSON.parse(stored) as string[];
   // Default: all calendars
   const cals = await getAllCalendars();
@@ -49,7 +48,7 @@ export async function getSelectedCalendarIds(): Promise<string[]> {
 }
 
 export async function saveSelectedCalendarIds(ids: string[]): Promise<void> {
-  await SecureStore.set(SELECTED_IDS_KEY, JSON.stringify(ids));
+  await SecureStore.set(KEYS.CALENDAR_SELECTED_IDS, JSON.stringify(ids));
 }
 
 // ── Event fetching ────────────────────────────────────────────────────────────

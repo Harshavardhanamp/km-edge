@@ -88,7 +88,7 @@ export default function CaptureScreen({ navigation, route }: Props) {
 
     const now = new Date();
     const contentFinal = captureKind === 'EVENT'
-      ? `**Event:** ${eventStart.toLocaleString()}${eventEnd ? ` – ${eventEnd.toLocaleTimeString()}` : ''}\n\n${content}`
+      ? `**Event:** ${eventStart.toISOString()}${eventEnd ? ` – ${eventEnd.toISOString()}` : ''}\n\n${content}`
       : content;
 
     const sha = await sha256String(contentFinal);

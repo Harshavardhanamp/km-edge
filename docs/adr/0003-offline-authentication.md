@@ -43,3 +43,13 @@ GKS session tokens are hashed before storage and expire after 8h absolute. Stori
 - Users can log in and use KM-Edge fully offline after one successful online login
 - Password change propagation requires one online login — document this clearly in the UI
 - Biometric auth (F5.4) replaces the password re-entry step but the cryptographic root is still the password-derived verifier
+
+## Addendum — 2026-09-29: Silent Re-auth Password Storage (V1)
+
+**Context:** GKS session cookies expire after 8h. Any API call made after expiry returns 401. To avoid interrupting the user mid-session, `gksClient.ts` silently re-authenticates by re-reading `GKS_PASSWORD_ENC` from secure store and replaying the login call.
+
+**Decision:** Store the plaintext GKS password (as `GKS_PASSWORD_ENC`) in the device secure store alongside the offline verifier. This is the same credential store used for the verifier — it does not weaken the existing threat model.
+
+**Tradeoff accepted:** `GKS_PASSWORD_ENC` is the raw GKS password, not encrypted beyond what the OS secure store provides. The name `_ENC` is aspirational — in V1 it is protected only by the OS credential store (iOS Keychain, Android Keystore), which is sufficient for the stated threat model.
+
+**V2 upgrade path:** Replace with short-lived refresh tokens on the GKS side. When GKS issues a refresh token on login, silent re-auth uses the token instead of the password. `GKS_PASSWORD_ENC` can then be removed from secure store entirely.

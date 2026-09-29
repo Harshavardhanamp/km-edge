@@ -95,19 +95,22 @@ export async function unlinkAttachment(
   );
 
   if (refCount && refCount.n === 0) {
-    const row = db.getFirstSync<{ blob_path: string }>(
-      `SELECT blob_path FROM attachments WHERE edge_attachment_id = ?`,
-      edge_attachment_id
-    );
-
+    // ponytail: mark pending_delete; sync engine purges blob after GKS ack
     db.runSync(
-      `DELETE FROM attachments WHERE edge_attachment_id = ?`,
+      `UPDATE attachments SET pending_delete = 1 WHERE edge_attachment_id = ?`,
       edge_attachment_id
     );
+  }
+}
 
-    if (row) {
-      const fullPath = `${FileSystem.documentDirectory}${row.blob_path}`;
-      await FileSystem.deleteAsync(fullPath, { idempotent: true });
-    }
+// Called by sync engine after GKS acknowledges delete — physically removes blob
+export async function purgeAttachment(edge_attachment_id: string): Promise<void> {
+  const row = db.getFirstSync<{ blob_path: string }>(
+    `SELECT blob_path FROM attachments WHERE edge_attachment_id = ?`,
+    edge_attachment_id
+  );
+  db.runSync(`DELETE FROM attachments WHERE edge_attachment_id = ?`, edge_attachment_id);
+  if (row) {
+    await FileSystem.deleteAsync(`${FileSystem.documentDirectory}${row.blob_path}`, { idempotent: true });
   }
 }

@@ -5,7 +5,12 @@
     "version": "0.1.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
-    "userInterfaceStyle": "automatic",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#FDF8F4"
+    },
+    "userInterfaceStyle": "light",
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.kashyap.kmedge"
@@ -26,7 +31,14 @@
     "plugins": [
       "expo-secure-store",
       "expo-calendar",
-      "expo-local-authentication",
+      "expo-camera",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "KM-Edge needs photo library access to attach images.",
+          "cameraPermission": "KM-Edge needs camera access to scan documents and capture images."
+        }
+      ],
       [
         "expo-background-fetch",
         {

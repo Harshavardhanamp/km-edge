@@ -4,7 +4,7 @@ const ALLOWED_EXT = new Set([
   'txt', 'md', 'csv', 'mp4', 'mov', 'mp3', 'm4a',
 ]);
 
-const MAX_FILE_BYTES = 100 * 1024 * 1024;   // 100MB per file
+const MAX_FILE_BYTES = 50 * 1024 * 1024;    // 50MB per file (matches record total cap)
 const MAX_TOTAL_BYTES = 50 * 1024 * 1024;   // 50MB per record total
 const MAX_COUNT = 10;
 
@@ -20,7 +20,7 @@ export function validateFile(file: {
     };
   }
   if (file.size > MAX_FILE_BYTES) {
-    return { ok: false, reason: `${file.name} exceeds the 100MB per-file limit.` };
+    return { ok: false, reason: `${file.name} exceeds the 50MB per-file limit.` };
   }
   return { ok: true };
 }

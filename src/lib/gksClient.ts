@@ -16,7 +16,7 @@ export async function login(
   baseUrl: string,
   username: string,
   password: string
-): Promise<{ ok: true; cookie: string } | { ok: false; error: string }> {
+): Promise<{ ok: true; cookie: string; userId: string } | { ok: false; error: string }> {
   try {
     const res = await fetch(`${baseUrl}/api/v1/auth/login`, {
       method: 'POST',
@@ -29,11 +29,12 @@ export async function login(
       return { ok: false, error: body.message ?? 'Login failed' };
     }
 
+    const body = await res.json();
     const cookie = res.headers.get('set-cookie') ?? '';
-    const csrf = res.headers.get('x-csrf-token') ?? '';
+    const csrf = res.headers.get('x-csrf-token') ?? body.csrf_token ?? '';
     sessionCookie = cookie;
     csrfToken = csrf;
-    return { ok: true, cookie };
+    return { ok: true, cookie, userId: body.user?.user_id ?? username };
   } catch {
     return { ok: false, error: 'Network error — check your connection' };
   }

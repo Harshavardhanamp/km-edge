@@ -11,6 +11,7 @@ export interface DeltaEntry {
   attachment_edge_ids: string;
   status: string;
   gks_id: string | null;
+  gks_record_id: string | null;
   gks_acknowledged_at: string | null;
   gks_error: string | null;
   retry_count: number;
@@ -22,11 +23,15 @@ export function getPendingDeltas(): DeltaEntry[] {
   );
 }
 
-export function acknowledgeDelta(seq: number, gks_id: string): void {
+export function markInFlight(seq: number): void {
+  db.runSync(`UPDATE delta_log SET status = 'IN_FLIGHT' WHERE seq = ?`, seq);
+}
+
+export function acknowledgeDelta(seq: number, gks_record_id: string): void {
   db.runSync(
-    `UPDATE delta_log SET status = 'ACKNOWLEDGED', gks_id = ?, gks_acknowledged_at = ?
+    `UPDATE delta_log SET status = 'ACKNOWLEDGED', gks_record_id = ?, gks_acknowledged_at = ?
      WHERE seq = ?`,
-    gks_id,
+    gks_record_id,
     new Date().toISOString(),
     seq
   );
@@ -39,4 +44,9 @@ export function rejectDelta(seq: number, error: string): void {
     error,
     seq
   );
+}
+
+export function resetInFlightToPending(): void {
+  // Called on app start — any IN_FLIGHT from a crashed session becomes retryable
+  db.runSync(`UPDATE delta_log SET status = 'PENDING' WHERE status = 'IN_FLIGHT'`);
 }

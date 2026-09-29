@@ -24,12 +24,10 @@ export interface ErrorEvent {
 
 let sessionId = '';
 let userId = '';
-let tenantId = '';
 
-export function init(uid: string, tid: string) {
+export function init(uid: string) {
   sessionId = Crypto.randomUUID();
   userId = uid;
-  tenantId = tid;
 }
 
 function write(
@@ -45,7 +43,7 @@ function write(
        VALUES (?, ?, ?, ?, ?, ?, ?)`,
       sessionId,
       userId,
-      tenantId,
+      '',
       event_type,
       event_name,
       new Date().toISOString(),

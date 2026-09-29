@@ -7,6 +7,7 @@ export const KEYS = {
   OFFLINE_VERIFIER: 'offline_verifier',
   OFFLINE_VERIFIER_SALT: 'offline_verifier_salt',
   OFFLINE_ATTEMPT_COUNT: 'offline_attempt_count',
+  CALENDAR_SELECTED_IDS: 'calendar_selected_ids', // preference, not cleared on logout
 } as const;
 
 export async function get(key: string): Promise<string | null> {

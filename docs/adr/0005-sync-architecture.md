@@ -69,3 +69,15 @@ Not in initial sync release. Decision deferred to ADR-0008 (not yet written). Th
 - `delta.json` grows unboundedly (it's an audit trail by design). A compaction pass (keeping only unacknowledged entries in the live file, archiving acknowledged to `delta_archive_<year>.json`) is a future operational concern.
 - Cloud storage write for every local capture (appending to delta.json) requires connectivity to cloud drive at capture time. If cloud drive is also offline, writes are buffered in device memory and flushed when cloud drive reconnects.
 - The `IN_FLIGHT` status ensures that a crash during transmission leaves the entry retryable, not silently dropped.
+
+## Addendum — 2026-09-29: V1 Implementation Deviations (ADR-0009 supersedes cloud storage)
+
+**Delta log moved to local SQLite:** ADR-0009 replaced cloud drive with local SQLite. In V1, `delta_log` is a SQLite table in `km-edge.db`, not a `delta.json` file in cloud storage. The schema maps directly: `seq` → `id` (autoincrement), same `operation`/`status` fields. Transmission to GKS is V2 work; V1 only appends.
+
+**Attachment blob purge timing — V1 vs V2:**
+
+In V1, `unlinkAttachment()` in `attachmentStore.ts` ref-counts and physically deletes the blob immediately when an attachment is removed (ref count reaches zero). This differs from the protocol above which implies blobs should be retained until GKS acknowledges the delete delta.
+
+Tradeoff accepted for V1: since V1 never transmits, there is no GKS to acknowledge. Immediate purge is correct for V1.
+
+V2 must change this: when a delete delta is `PENDING` or `IN_FLIGHT`, the blob must be retained so the V2 sync engine can upload the delete record to GKS before purging. Implementation: add a `pending_delete` flag to `attachments` table; purge only after delta reaches `ACKNOWLEDGED`.

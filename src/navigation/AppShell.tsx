@@ -4,6 +4,8 @@ import CaptureScreen from '../screens/CaptureScreen';
 import StatusDetailScreen from '../screens/StatusDetailScreen';
 import { startProbe, stopProbe } from '../lib/gksProbe';
 import { telemetry } from '../lib/telemetry';
+import { resetInFlightToPending } from '../lib/db/deltaStore';
+import { registerSyncTask, unregisterSyncTask } from '../lib/sync/syncTask';
 import MainTabs from './MainTabs';
 
 const Shell = createNativeStackNavigator();
@@ -12,9 +14,12 @@ export default function AppShell() {
   useEffect(() => {
     telemetry.sessionStart();
     startProbe();
+    resetInFlightToPending();
+    registerSyncTask().catch(() => {});
     return () => {
       telemetry.sessionEnd();
       stopProbe();
+      unregisterSyncTask().catch(() => {});
     };
   }, []);
 

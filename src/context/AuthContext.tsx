@@ -3,14 +3,12 @@ import { KEYS, clearSession, get, set } from '../lib/secureStore';
 
 interface AuthSession {
   userId: string;
-  tenantId: string;
   offline?: boolean;
 }
 
 interface AuthContextValue {
   sessionValid: boolean;
   userId: string;
-  tenantId: string;
   offline: boolean;
   login: (session: AuthSession) => void;
   logout: () => Promise<void>;
@@ -28,7 +26,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const verifier = await get(KEYS.OFFLINE_VERIFIER);
       if (userId && verifier) {
         // Credentials exist — treat as valid session; gksProbe will refine online/offline
-        setSession({ userId, tenantId: '' });
+        setSession({ userId });
       }
       setLoaded(true);
     }
@@ -52,7 +50,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       value={{
         sessionValid: !!session,
         userId: session?.userId ?? '',
-        tenantId: session?.tenantId ?? '',
         offline: session?.offline ?? false,
         login,
         logout,
