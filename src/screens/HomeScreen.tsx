@@ -1,137 +1,180 @@
-import React, { useState, useCallback } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
-  View, Text, StyleSheet, TouchableOpacity, FlatList,
-  Modal, SafeAreaView, ScrollView,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from 'react-native';
-import { CAPTURE_TYPES, type EdgeRecord } from '../lib/types';
+import StatusDot from '../components/StatusDot';
+import TypePickerSheet from '../components/TypePickerSheet';
+import { getRecentRecords } from '../lib/db/recordStore';
+import { getUpcomingEvents, type CalendarEvent } from '../lib/calendar';
+import { KEYS, get } from '../lib/secureStore';
+import { useScreenTracking } from '../lib/useScreenTracking';
+import { CAPTURE_TYPES, type CaptureKind, type EdgeRecord, type RecordType } from '../lib/types';
 
-// Placeholder until real store is wired
-const MOCK_RECENT: Pick<EdgeRecord, 'edge_id' | 'capture_kind' | 'title' | 'captured_at' | 'sync_status'>[] = [
-  { edge_id: '1', capture_kind: 'JOURNAL',  title: 'Morning reflection',   captured_at: new Date(Date.now() - 2 * 3600_000).toISOString(), sync_status: 'ACKNOWLEDGED' },
-  { edge_id: '2', capture_kind: 'DECISION', title: 'Chose new laptop',      captured_at: new Date(Date.now() - 26 * 3600_000).toISOString(), sync_status: 'PENDING' },
-  { edge_id: '3', capture_kind: 'EVENT',    title: 'Team offsite',          captured_at: new Date(Date.now() - 3 * 86_400_000).toISOString(), sync_status: 'ACKNOWLEDGED' },
-];
+export default function HomeScreen({ navigation }: any) {
+  useScreenTracking('HomeScreen');
 
-function relativeTime(iso: string): string {
-  const diff = Date.now() - new Date(iso).getTime();
-  const h = Math.floor(diff / 3_600_000);
-  if (h < 1) return 'just now';
-  if (h < 24) return `${h}h ago`;
-  const d = Math.floor(h / 24);
-  if (d === 1) return 'yesterday';
-  return `${d}d ago`;
-}
+  const [displayName, setDisplayName] = useState('');
+  const [recentRecords, setRecentRecords] = useState<EdgeRecord[]>([]);
+  const [upcomingEvents, setUpcomingEvents] = useState<CalendarEvent[]>([]);
+  const [showTypePicker, setShowTypePicker] = useState(false);
 
-function iconFor(capture_kind: EdgeRecord['capture_kind']): string {
-  return CAPTURE_TYPES.find(t => t.capture_kind === capture_kind)?.icon ?? '📄';
-}
+  useEffect(() => {
+    get(KEYS.GKS_USERNAME).then((u) => setDisplayName(u ?? ''));
+    setRecentRecords(getRecentRecords(5));
+    getUpcomingEvents(7).then(setUpcomingEvents);
+  }, []);
 
-export default function HomeScreen() {
-  const [pickerVisible, setPickerVisible] = useState(false);
-
-  const openPicker = useCallback(() => setPickerVisible(true), []);
-  const closePicker = useCallback(() => setPickerVisible(false), []);
-
-  // TODO: wire to real GKS probe
-  const gksOnline = true;
-  const lastSynced = '10m ago';
-  const pendingCount = MOCK_RECENT.filter(r => r.sync_status === 'PENDING').length;
+  function handleTypeSelect(type: RecordType, captureKind: CaptureKind) {
+    setShowTypePicker(false);
+    navigation.navigate('Capture', { recordType: type, captureKind });
+  }
 
   return (
-    <SafeAreaView style={s.safe}>
+    <View style={styles.container}>
       {/* Header */}
-      <View style={s.header}>
-        <Text style={s.userName}>👤 Harsha</Text>
-        <Text style={s.syncStatus}>
-          {gksOnline
-            ? `🟢 GKS · ${lastSynced}`
-            : `🔴 Offline · ${pendingCount} pending`}
-        </Text>
+      <View style={styles.header}>
+        <Text style={styles.displayName}>👤 {displayName}</Text>
+        <StatusDot />
       </View>
 
-      <ScrollView contentContainerStyle={s.body}>
+      <ScrollView style={styles.scroll} showsVerticalScrollIndicator={false}>
         {/* Capture button */}
-        <TouchableOpacity style={s.captureBtn} onPress={openPicker} activeOpacity={0.85}>
-          <Text style={s.captureBtnText}>+ New Record</Text>
+        <TouchableOpacity
+          style={styles.captureBtn}
+          onPress={() => setShowTypePicker(true)}
+        >
+          <Text style={styles.captureBtnText}>+ New Record</Text>
         </TouchableOpacity>
 
-        {/* Upcoming — placeholder until expo-calendar is wired */}
-        <Text style={s.sectionHeader}>Upcoming</Text>
-        <View style={s.card}>
-          <Text style={s.placeholder}>Calendar permission not yet requested</Text>
-        </View>
+        {/* Upcoming events */}
+        {upcomingEvents.length > 0 && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Upcoming</Text>
+            {upcomingEvents.map((ev) => (
+              <View key={ev.id} style={styles.eventRow}>
+                <Text style={styles.eventDate}>{formatEventDate(ev)}</Text>
+                <Text style={styles.eventTitle} numberOfLines={1}>{ev.title}</Text>
+              </View>
+            ))}
+            <TouchableOpacity onPress={() => navigation.navigate('Calendar')}>
+              <Text style={styles.seeAll}>See calendar →</Text>
+            </TouchableOpacity>
+          </View>
+        )}
 
         {/* Recent records */}
-        <Text style={s.sectionHeader}>Recent</Text>
-        {MOCK_RECENT.map(r => (
-          <View key={r.edge_id} style={s.recordRow}>
-            <Text style={s.recordIcon}>{iconFor(r.capture_kind)}</Text>
-            <View style={s.recordMeta}>
-              <Text style={s.recordTitle} numberOfLines={1}>{r.title}</Text>
-              <Text style={s.recordTime}>{relativeTime(r.captured_at)}</Text>
-            </View>
-            {r.sync_status === 'PENDING' && <Text style={s.pendingDot}>●</Text>}
-          </View>
-        ))}
-        <TouchableOpacity>
-          <Text style={s.seeAll}>See all records →</Text>
-        </TouchableOpacity>
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Recent</Text>
+          {recentRecords.length === 0 ? (
+            <Text style={styles.empty}>No records yet. Tap "+ New Record" to start.</Text>
+          ) : (
+            recentRecords.map((r) => {
+              const ct = CAPTURE_TYPES.find((c) => c.capture_kind === r.capture_kind);
+              return (
+                <TouchableOpacity
+                  key={r.edge_id}
+                  style={styles.recordRow}
+                  onPress={() => navigation.navigate('RecordDetail', { edge_id: r.edge_id })}
+                >
+                  <Text style={styles.recordIcon}>{ct?.icon ?? '📝'}</Text>
+                  <Text style={styles.recordTitle} numberOfLines={1}>{r.title}</Text>
+                  <Text style={styles.recordTime}>{relTime(r.captured_at)}</Text>
+                </TouchableOpacity>
+              );
+            })
+          )}
+          {recentRecords.length > 0 && (
+            <TouchableOpacity onPress={() => navigation.navigate('Records')}>
+              <Text style={styles.seeAll}>See all records →</Text>
+            </TouchableOpacity>
+          )}
+        </View>
       </ScrollView>
 
-      {/* Type picker bottom sheet */}
-      <Modal visible={pickerVisible} animationType="slide" transparent onRequestClose={closePicker}>
-        <TouchableOpacity style={s.overlay} activeOpacity={1} onPress={closePicker} />
-        <View style={s.sheet}>
-          <Text style={s.sheetTitle}>What are you capturing?</Text>
-          <View style={s.typeGrid}>
-            {CAPTURE_TYPES.map(t => (
-              <TouchableOpacity
-                key={t.capture_kind}
-                style={s.typeBtn}
-                onPress={() => {
-                  closePicker();
-                  // TODO: navigate to record creation screen with type pre-selected
-                }}
-              >
-                <Text style={s.typeIcon}>{t.icon}</Text>
-                <Text style={s.typeLabel}>{t.label}</Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-          <TouchableOpacity onPress={closePicker} style={s.cancelBtn}>
-            <Text style={s.cancelText}>Cancel</Text>
-          </TouchableOpacity>
-        </View>
-      </Modal>
-    </SafeAreaView>
+      <TypePickerSheet
+        visible={showTypePicker}
+        onSelect={handleTypeSelect}
+        onDismiss={() => setShowTypePicker(false)}
+      />
+    </View>
   );
 }
 
-const s = StyleSheet.create({
-  safe:          { flex: 1, backgroundColor: '#fff' },
-  header:        { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: '#e0e0e0' },
-  userName:      { fontSize: 15, fontWeight: '600' },
-  syncStatus:    { fontSize: 12, color: '#555' },
-  body:          { padding: 16, gap: 8 },
-  captureBtn:    { backgroundColor: '#1a73e8', borderRadius: 12, paddingVertical: 18, alignItems: 'center', marginBottom: 8 },
-  captureBtnText:{ color: '#fff', fontSize: 17, fontWeight: '700' },
-  sectionHeader: { fontSize: 13, fontWeight: '600', color: '#888', textTransform: 'uppercase', letterSpacing: 0.5, marginTop: 12 },
-  card:          { backgroundColor: '#f5f5f5', borderRadius: 8, padding: 12 },
-  placeholder:   { color: '#aaa', fontSize: 13 },
-  recordRow:     { flexDirection: 'row', alignItems: 'center', paddingVertical: 10, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: '#f0f0f0' },
-  recordIcon:    { fontSize: 20, marginRight: 10 },
-  recordMeta:    { flex: 1 },
-  recordTitle:   { fontSize: 15 },
-  recordTime:    { fontSize: 12, color: '#888', marginTop: 2 },
-  pendingDot:    { color: '#f59e0b', fontSize: 10 },
-  seeAll:        { color: '#1a73e8', fontSize: 13, marginTop: 12 },
-  overlay:       { flex: 1, backgroundColor: 'rgba(0,0,0,0.3)' },
-  sheet:         { backgroundColor: '#fff', borderTopLeftRadius: 16, borderTopRightRadius: 16, padding: 24 },
-  sheetTitle:    { fontSize: 16, fontWeight: '700', marginBottom: 20, textAlign: 'center' },
-  typeGrid:      { flexDirection: 'row', flexWrap: 'wrap', gap: 12, justifyContent: 'center' },
-  typeBtn:       { width: '40%', alignItems: 'center', backgroundColor: '#f5f7ff', borderRadius: 10, padding: 16, gap: 6 },
-  typeIcon:      { fontSize: 28 },
-  typeLabel:     { fontSize: 13, fontWeight: '600' },
-  cancelBtn:     { marginTop: 20, alignItems: 'center' },
-  cancelText:    { color: '#888', fontSize: 15 },
+function formatEventDate(ev: CalendarEvent): string {
+  const now = new Date();
+  const d = ev.startDate;
+  const isToday = d.toDateString() === now.toDateString();
+  const tomorrow = new Date(now);
+  tomorrow.setDate(now.getDate() + 1);
+  const isTomorrow = d.toDateString() === tomorrow.toDateString();
+
+  const day = isToday ? 'Today' : isTomorrow ? 'Tomorrow'
+    : d.toLocaleDateString('en', { weekday: 'short' });
+  if (ev.isAllDay) return day;
+  const time = d.toLocaleTimeString('en', { hour: 'numeric', minute: '2-digit' });
+  return `${day} ${time}`;
+}
+
+function relTime(iso: string): string {
+  const diff = Date.now() - new Date(iso).getTime();
+  const min = Math.floor(diff / 60_000);
+  if (min < 60) return `${min}m ago`;
+  const hr = Math.floor(min / 60);
+  if (hr < 24) return `${hr}h ago`;
+  const d = Math.floor(hr / 24);
+  return d === 1 ? 'yesterday' : `${d}d ago`;
+}
+
+const colors = { bg: '#FDF8F4', accent: '#C17A3A', text: '#2D2016', border: '#E0D0C0' };
+
+const styles = StyleSheet.create({
+  container: { flex: 1, backgroundColor: colors.bg },
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 14,
+    borderBottomWidth: 1,
+    borderColor: colors.border,
+  },
+  displayName: { fontSize: 15, fontWeight: '600', color: colors.text },
+  scroll: { flex: 1 },
+  captureBtn: {
+    margin: 20,
+    backgroundColor: colors.accent,
+    borderRadius: 12,
+    paddingVertical: 18,
+    alignItems: 'center',
+  },
+  captureBtnText: { color: '#FFF', fontSize: 18, fontWeight: '700' },
+  section: { paddingHorizontal: 20, marginBottom: 20 },
+  sectionTitle: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#7A6A5A',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginBottom: 10,
+  },
+  eventRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 7, gap: 8 },
+  eventDate: { fontSize: 12, color: '#7A6A5A', width: 90 },
+  eventTitle: { fontSize: 14, color: colors.text, flex: 1 },
+  recordRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderColor: colors.border,
+    gap: 10,
+  },
+  recordIcon: { fontSize: 20 },
+  recordTitle: { flex: 1, fontSize: 14, color: colors.text },
+  recordTime: { fontSize: 12, color: '#A09080' },
+  seeAll: { fontSize: 13, color: colors.accent, marginTop: 12 },
+  empty: { fontSize: 14, color: '#A09080', paddingVertical: 8 },
 });

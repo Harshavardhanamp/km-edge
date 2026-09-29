@@ -1,22 +1,11 @@
+import { useNavigation } from '@react-navigation/native';
 import React from 'react';
 import { StyleSheet, Text, TouchableOpacity } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import { useGksProbe } from '../lib/gksProbe';
 
-export type GksState = 'online' | 'syncing' | 'offline';
-
-interface Props {
-  gksState: GksState;
-}
-
-const STATE_MAP: Record<GksState, { dot: string; label: string }> = {
-  online: { dot: '🟢', label: 'GKS' },
-  syncing: { dot: '🟡', label: 'Syncing…' },
-  offline: { dot: '🔴', label: 'Offline' },
-};
-
-export default function StatusDot({ gksState }: Props) {
+export default function StatusDot() {
   const navigation = useNavigation<any>();
-  const { dot, label } = STATE_MAP[gksState];
+  const { reachable } = useGksProbe();
 
   return (
     <TouchableOpacity
@@ -24,7 +13,7 @@ export default function StatusDot({ gksState }: Props) {
       onPress={() => navigation.navigate('StatusDetail')}
       hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
     >
-      <Text style={styles.text}>{dot} {label}</Text>
+      <Text style={styles.text}>{reachable ? '🟢' : '🔴'} GKS</Text>
     </TouchableOpacity>
   );
 }
