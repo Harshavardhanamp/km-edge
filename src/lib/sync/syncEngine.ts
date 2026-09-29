@@ -105,10 +105,27 @@ async function buildAuthHeaders(baseUrl: string): Promise<Record<string, string>
 
 async function syncDelta(baseUrl: string, delta: DeltaEntry): Promise<'ok' | 'fail' | 'skip'> {
   if (delta.operation === 'DELETE') {
-    // DELETE: just mark acknowledged — GKS record deletion is V2.1 work
-    // ponytail: GKS delete endpoint not yet defined; skip for now, mark ack
-    acknowledgeDelta(delta.seq, delta.gks_id ?? '');
-    return 'skip';
+    const gks_record_id = delta.gks_record_id ?? delta.gks_id;
+    if (!gks_record_id) {
+      // Record was never synced to GKS — nothing to delete remotely
+      acknowledgeDelta(delta.seq, '');
+      return 'ok';
+    }
+    markInFlight(delta.seq);
+    const res = await fetchWithReauth(baseUrl, `${baseUrl}/api/v1/records/${gks_record_id}`, {
+      method: 'DELETE',
+    });
+    if (!res) {
+      rejectDelta(delta.seq, 'Auth failed');
+      return 'fail';
+    }
+    if (res.status === 404 || res.status === 204) {
+      // 404 = already gone, 204 = deleted now — both are success
+      acknowledgeDelta(delta.seq, gks_record_id);
+      return 'ok';
+    }
+    rejectDelta(delta.seq, `HTTP ${res.status}`);
+    return 'fail';
   }
 
   const record = getRecord(delta.edge_id);
