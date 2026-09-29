@@ -10,5 +10,7 @@
 | [implementation-plan-local-storage](implementation-plan-local-storage.md) | 7-step implementation plan for local storage — approved | Approved | — |
 | [record-capture](record-capture.md) | Capture + detail screen layouts, title derivation, EVENT fields | Frozen | ADR-0009, ADR-0010 |
 | [implementation-plan-record-capture](implementation-plan-record-capture.md) | 6-step implementation plan for record capture — approved | Approved | — |
+| [attachments](attachments.md) | Attachment section layout, validation flow, compression, remove flow | Frozen | ADR-0009 |
+| [implementation-plan-attachments](implementation-plan-attachments.md) | 7-step implementation plan for attachments — approved | Approved | — |
 | [login-screen](login-screen.md) | Login flow, server discovery, offline auth, lockout, storage gate | Frozen | ADR-0003, ADR-0004 |
 | [implementation-plan-login](implementation-plan-login.md) | 10-step implementation plan for login screen — approved | Approved | ADR-0007, ADR-0008 |
