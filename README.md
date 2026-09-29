@@ -22,8 +22,21 @@ src/            # Source code (added as requirements solidify)
 
 ## Documentation Index
 
+### Architecture Decision Records
 - [ADR-0001: Repository and Documentation Strategy](docs/adr/0001-repo-and-documentation-strategy.md)
+- [ADR-0002: Platform Choice (PWA vs Native)](docs/adr/0002-platform-choice.md) — **OPEN, decision needed**
+- [ADR-0003: Offline Authentication Strategy](docs/adr/0003-offline-authentication.md)
+- [ADR-0004: Storage Strategy — Cloud Drive as User-Attached Store](docs/adr/0004-storage-strategy.md)
+- [ADR-0005: Sync Architecture — Delta Log + Append-Only Audit Trail](docs/adr/0005-sync-architecture.md)
+
+### Requirements
 - [REQ-0001: Initial Requirements Overview](docs/requirements/REQ-0001-initial-requirements.md)
+- [REQ-0002: Functional Requirements](docs/requirements/REQ-0002-functional-requirements.md)
+- [REQ-0003: Non-Functional Requirements](docs/requirements/REQ-0003-non-functional-requirements.md)
+
+### Design Documents
+- [Data Model](docs/design/data-model.md)
+- [GKS API Extensions Required](docs/design/GKS-API-extensions.md)
 
 ## Relationship to GKS
 

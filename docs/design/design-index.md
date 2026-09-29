@@ -1,7 +1,6 @@
 # Design Document Index
 
-Documents are added here as design decisions are made. Each links to the ADR that motivated it.
-
 | ID | Title | Status | ADR |
 |---|---|---|---|
-| — | *(pending requirements gathering)* | — | — |
+| [data-model](data-model.md) | KM-Edge Data Model — record envelope, GKS type mapping, extension fields | Draft | ADR-0001, ADR-0004, ADR-0005 |
+| [GKS-API-extensions](GKS-API-extensions.md) | GKS API changes required for KM-Edge sync | Draft | ADR-0005 |
