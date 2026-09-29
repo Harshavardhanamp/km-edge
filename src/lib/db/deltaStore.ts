@@ -50,3 +50,13 @@ export function resetInFlightToPending(): void {
   // Called on app start — any IN_FLIGHT from a crashed session becomes retryable
   db.runSync(`UPDATE delta_log SET status = 'PENDING' WHERE status = 'IN_FLIGHT'`);
 }
+
+export function resetDeltaToPending(seq: number): void {
+  db.runSync(
+    `UPDATE delta_log
+     SET status = 'PENDING', gks_error = NULL,
+         retry_count = COALESCE(retry_count, 0) + 1
+     WHERE seq = ?`,
+    seq
+  );
+}

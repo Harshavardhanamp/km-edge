@@ -45,8 +45,8 @@ export async function saveAttachment(file: {
   db.runSync(
     `INSERT INTO attachments (
       edge_attachment_id, sha256, original_filename, mime_type,
-      size_bytes, blob_path, captured_at
-    ) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      size_bytes, blob_path, captured_at, sync_status
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, 'PENDING')`,
     file.edge_attachment_id,
     file.sha256,
     file.original_filename,
@@ -95,9 +95,20 @@ export async function unlinkAttachment(
   );
 
   if (refCount && refCount.n === 0) {
+    const delta = db.getFirstSync<{ seq: number }>(
+      `SELECT seq FROM delta_log
+       WHERE edge_id = ? AND operation = 'DELETE'
+       ORDER BY seq DESC LIMIT 1`,
+      edge_id
+    );
+
     // ponytail: mark pending_delete; sync engine purges blob after GKS ack
     db.runSync(
-      `UPDATE attachments SET pending_delete = 1 WHERE edge_attachment_id = ?`,
+      `UPDATE attachments
+       SET pending_delete = 1,
+           delete_delta_seq = ?
+       WHERE edge_attachment_id = ?`,
+      delta?.seq ?? null,
       edge_attachment_id
     );
   }
