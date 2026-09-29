@@ -28,11 +28,15 @@ src/            # Source code (added as requirements solidify)
 - [ADR-0003: Offline Authentication Strategy](docs/adr/0003-offline-authentication.md)
 - [ADR-0004: Storage Strategy — Cloud Drive as User-Attached Store](docs/adr/0004-storage-strategy.md)
 - [ADR-0005: Sync Architecture — Delta Log + Append-Only Audit Trail](docs/adr/0005-sync-architecture.md)
+- [ADR-0006: Development Process — Requirements → Design → Plan → Code](docs/adr/0006-development-process.md)
+- [ADR-0007: Argon2id Library — hash-wasm](docs/adr/0007-argon2id-library.md)
+- [ADR-0008: Cloud Storage OAuth — Full Implementation in Login Sprint](docs/adr/0008-oauth-cloud-storage.md)
 
 ### Requirements
 - [REQ-0001: Initial Requirements Overview](docs/requirements/REQ-0001-initial-requirements.md)
 - [REQ-0002: Functional Requirements](docs/requirements/REQ-0002-functional-requirements.md)
 - [REQ-0003: Non-Functional Requirements](docs/requirements/REQ-0003-non-functional-requirements.md)
+- [REQ-0004: Login Screen](docs/requirements/REQ-0004-login-screen.md)
 
 ### Design Documents
 - [Data Model](docs/design/data-model.md)
