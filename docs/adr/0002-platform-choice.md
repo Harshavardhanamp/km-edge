@@ -1,7 +1,7 @@
 # ADR-0002: Platform Choice (PWA vs Native)
 
 **Date:** 2026-09-29  
-**Status:** Open — decision needed  
+**Status:** Accepted  
 **Author:** Harshavardhana P
 
 ## Context
@@ -16,13 +16,32 @@ KM-Edge must run on iOS and Android phones and tablets. Two viable paths:
 
 ## Decision
 
-**OPEN.** The calendar integration (F3), offline credential verifier stored in secure enclave (NF3), biometric auth (F5.4), Bluetooth discovery (F8), and background sync (F7) all require native API access that PWA cannot reliably provide on iOS.
+**React Native via Expo managed workflow.** Reasons:
 
-**Recommendation:** React Native. Shares the TypeScript/React mental model with GKS frontend. Expo managed workflow reduces native build complexity.
+1. Calendar integration (F3), offline credential verifier in secure enclave (NF3), biometric auth (F5.4), Bluetooth discovery (F8), and background sync (F7) all require native APIs that iOS Safari PWA cannot provide reliably or at all.
+2. Bluetooth on iOS is a hard PWA blocker — choosing PWA now would force a full rewrite when F8 is built.
+3. Background sync ("it just works without opening the app") is the UX difference that matters for a family tool.
+4. Same language as GKS frontend (TypeScript + React) — same developer can work both codebases.
 
-**Decision owner:** Harshavardhana P — confirm before any code is written.
+**Build infrastructure:** Expo EAS Build (free tier). Runs on Windows and Ubuntu — no Mac required. iOS builds run on Expo's cloud infrastructure. Android builds can run locally or on EAS.
+
+**Distribution:** TestFlight (iOS) + direct APK sideload (Android) for private family use. No public app store submission required.
+
+## Key Expo libraries
+
+| Need | Library |
+|---|---|
+| Calendar + alarms | `expo-calendar` |
+| Secure credential storage | `expo-secure-store` (backed by iOS Keychain / Android Keystore) |
+| Background sync | `expo-background-fetch` + `expo-task-manager` |
+| Biometric auth | `expo-local-authentication` |
+| Bluetooth LE (future F8) | `react-native-ble-plx` (bare workflow upgrade needed when F8 starts) |
+| File picker + attachments | `expo-document-picker` + `expo-file-system` |
+| Network state (online/offline) | `expo-network` |
 
 ## Consequences
 
-- If React Native: use Expo SDK. Calendar via `expo-calendar`. Secure storage via `expo-secure-store`. Background tasks via `expo-background-fetch`.
-- If PWA: calendar and biometric features will be limited/unavailable on iOS. Bluetooth (F8) is impossible. Flag these as hard constraints at product level before choosing.
+- Expo managed workflow covers all initial release needs without ejecting
+- Bluetooth (F8) will require upgrading to bare workflow or Expo with a config plugin — plan for this before F8 starts, not during
+- EAS Build free tier has build queue limits; acceptable for a private family app with infrequent releases
+- No Xcode or Android Studio required on developer machines for CI builds
