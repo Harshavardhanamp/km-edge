@@ -1,4 +1,5 @@
-import React, { useEffect, useState } from 'react';
+import { useFocusEffect } from '@react-navigation/native';
+import React, { useCallback, useState } from 'react';
 import {
   ScrollView,
   StyleSheet,
@@ -21,14 +22,20 @@ export default function HomeScreen({ navigation }: any) {
   const [recentRecords, setRecentRecords] = useState<EdgeRecord[]>([]);
   const [upcomingEvents, setUpcomingEvents] = useState<CalendarEvent[]>([]);
   const [showTypePicker, setShowTypePicker] = useState(false);
+  const [lastSyncedAt, setLastSyncedAt] = useState<string | null>(null);
+  const [gksSyncedCount, setGksSyncedCount] = useState<number | null>(null);
 
-  useEffect(() => {
-    get(KEYS.GKS_USERNAME).then((u) => setDisplayName(u ?? ''));
-    setRecentRecords(getRecentRecords(5));
-    requestCalendarPermission().then((granted) => {
-      if (granted) getUpcomingEvents(7).then(setUpcomingEvents);
-    });
-  }, []);
+  useFocusEffect(
+    useCallback(() => {
+      get(KEYS.GKS_USERNAME).then((u) => setDisplayName(u ?? ''));
+      setRecentRecords(getRecentRecords(5));
+      requestCalendarPermission().then((granted) => {
+        if (granted) getUpcomingEvents(7).then(setUpcomingEvents);
+      });
+      get(KEYS.LAST_SYNCED_AT).then(v => setLastSyncedAt(v));
+      get(KEYS.GKS_SYNCED_COUNT).then(v => setGksSyncedCount(v ? parseInt(v, 10) : null));
+    }, [])
+  );
 
   function handleTypeSelect(type: RecordType, captureKind: CaptureKind) {
     setShowTypePicker(false);
@@ -40,7 +47,12 @@ export default function HomeScreen({ navigation }: any) {
       {/* Header */}
       <View style={styles.header}>
         <Text style={styles.displayName}>👤 {displayName}</Text>
-        <StatusDot />
+        <View style={styles.headerRight}>
+          <StatusDot />
+          <Text style={styles.syncLabel}>
+            {lastSyncedAt ? `Last synced ${relTime(lastSyncedAt)}` : 'Never synced'}
+          </Text>
+        </View>
       </View>
 
       <ScrollView style={styles.scroll} showsVerticalScrollIndicator={false}>
@@ -145,6 +157,8 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
   },
   displayName: { fontSize: 15, fontWeight: '600', color: colors.text },
+  headerRight: { alignItems: 'flex-end' },
+  syncLabel: { fontSize: 12, color: '#7A6A5A', marginTop: 2, marginBottom: 4 },
   scroll: { flex: 1 },
   captureBtn: {
     margin: 20,
