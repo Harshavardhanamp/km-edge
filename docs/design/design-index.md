@@ -14,5 +14,7 @@
 | [implementation-plan-attachments](implementation-plan-attachments.md) | 7-step implementation plan for attachments — approved | Approved | — |
 | [observability](observability.md) | Telemetry schema, service design, central server architecture, GKS admin dashboard | Frozen | — |
 | [implementation-plan-observability](implementation-plan-observability.md) | 12-step plan (edge + central server + GKS extensions) — approved | Approved | — |
+| [calendar](calendar.md) | Calendar service, full calendar screen layout, event lifecycle, settings | Frozen | ADR-0002 |
+| [implementation-plan-calendar](implementation-plan-calendar.md) | 7-step implementation plan for calendar — approved | Approved | — |
 | [login-screen](login-screen.md) | Login flow, server discovery, offline auth, lockout, storage gate | Frozen | ADR-0003, ADR-0004 |
 | [implementation-plan-login](implementation-plan-login.md) | 10-step implementation plan for login screen — approved | Approved | ADR-0007, ADR-0008 |
