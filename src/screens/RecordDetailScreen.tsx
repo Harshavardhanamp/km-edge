@@ -18,9 +18,11 @@ import { addAttachment, getAttachments, removeAttachment, type IncomingFile } fr
 import type { AttachmentMeta } from '../lib/db/attachmentStore';
 import {
   getRecord,
+  getCalendarFields,
   softDeleteRecord,
   updateRecord,
 } from '../lib/db/recordStore';
+import { updateEvent, deleteEvent } from '../lib/calendar';
 import { telemetry } from '../lib/telemetry';
 import { useScreenTracking } from '../lib/useScreenTracking';
 import type { EdgeRecord, CaptureKind, RecordType } from '../lib/types';
@@ -83,6 +85,20 @@ export default function RecordDetailScreen({ navigation, route }: Props) {
       capture_kind: newKind ?? record.capture_kind,
       content_sha256: sha,
     });
+
+    // Keep native calendar entry in sync for EVENT records
+    const calFields = getCalendarFields(edge_id);
+    if (calFields?.has_calendar_entry && calFields.native_calendar_event_id) {
+      try {
+        await updateEvent(calFields.native_calendar_event_id, {
+          title: newTitle,
+          startDate: new Date(), // ponytail: date not stored separately in V1 — no update possible without parsing content
+        });
+      } catch {
+        // non-fatal: native calendar may have been deleted by user
+      }
+    }
+
     setRecord((r) => r ? {
       ...r,
       title: newTitle,
@@ -95,12 +111,22 @@ export default function RecordDetailScreen({ navigation, route }: Props) {
   }
 
   function handleDelete() {
-    Alert.alert('Delete record?', 'This cannot be undone.', [
-      { text: 'Cancel', style: 'cancel' },
+    const calFields = getCalendarFields(edge_id);
+    const hasCalEntry = calFields?.has_calendar_entry && calFields.native_calendar_event_id;
+
+    const message = hasCalEntry
+      ? 'This will also remove the linked calendar entry.'
+      : 'This cannot be undone.';
+
+    Alert.alert('Delete record?', message, [
+      { text: 'Keep editing', style: 'cancel' },
       {
         text: 'Delete',
         style: 'destructive',
-        onPress: () => {
+        onPress: async () => {
+          if (hasCalEntry) {
+            try { await deleteEvent(calFields!.native_calendar_event_id!); } catch { /* non-fatal */ }
+          }
           softDeleteRecord(edge_id);
           telemetry.action('record_delete', { edge_id });
           navigation.goBack();

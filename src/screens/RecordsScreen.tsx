@@ -11,6 +11,7 @@ import { db } from '../lib/db/index';
 import { telemetry } from '../lib/telemetry';
 import { useScreenTracking } from '../lib/useScreenTracking';
 import { CAPTURE_TYPES, type CaptureKind, type EdgeRecord } from '../lib/types';
+import AppHeader from '../components/AppHeader';
 import TypePickerSheet from '../components/TypePickerSheet';
 import type { RecordType } from '../lib/types';
 
@@ -96,6 +97,7 @@ export default function RecordsScreen({ navigation }: any) {
 
   return (
     <View style={styles.container}>
+      <AppHeader title="Records" />
       {/* Search bar */}
       <View style={styles.searchRow}>
         <TextInput

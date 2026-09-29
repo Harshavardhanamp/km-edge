@@ -16,6 +16,7 @@ import {
 import TypePickerSheet from '../components/TypePickerSheet';
 import { sha256String } from '../lib/crypto';
 import { createRecord } from '../lib/db/recordStore';
+import { createEvent, requestCalendarPermission } from '../lib/calendar';
 import { deriveTitle } from '../lib/titleDerive';
 import { telemetry } from '../lib/telemetry';
 import { useScreenTracking } from '../lib/useScreenTracking';
@@ -63,6 +64,7 @@ export default function CaptureScreen({ navigation, route }: Props) {
   const [eventStart, setEventStart] = useState(new Date());
   const [eventEnd, setEventEnd] = useState<Date | null>(null);
   const [addToCalendar, setAddToCalendar] = useState(false);
+  const [reminderMinutes, setReminderMinutes] = useState(30);
   const [saving, setSaving] = useState(false);
 
   const contentRef = useRef<TextInput>(null);
@@ -92,6 +94,21 @@ export default function CaptureScreen({ navigation, route }: Props) {
     const sha = await sha256String(contentFinal);
     const edge_id = uuidv7();
 
+    let nativeCalendarEventId: string | null = null;
+    if (captureKind === 'EVENT' && addToCalendar) {
+      const permitted = await requestCalendarPermission();
+      if (permitted) {
+        try {
+          nativeCalendarEventId = await createEvent(
+            { title: deriveTitle(contentFinal), startDate: eventStart, endDate: eventEnd },
+            reminderMinutes
+          );
+        } catch {
+          // calendar creation failure is non-fatal — record still saves
+        }
+      }
+    }
+
     createRecord({
       edge_id,
       gks_id: null,
@@ -113,6 +130,9 @@ export default function CaptureScreen({ navigation, route }: Props) {
       sync_status: 'PENDING',
       sync_error: null,
       content_sha256: sha,
+      native_calendar_event_id: nativeCalendarEventId,
+      has_calendar_entry: nativeCalendarEventId !== null,
+      reminder_minutes: nativeCalendarEventId !== null ? reminderMinutes : null,
     });
 
     telemetry.action('record_save', { type: recordType, capture_kind: captureKind });
@@ -221,6 +241,16 @@ export default function CaptureScreen({ navigation, route }: Props) {
                       trackColor={{ true: '#C17A3A' }}
                     />
                   </FieldRow>
+                  {addToCalendar && (
+                    <FieldRow label="Reminder">
+                      <SegmentControl
+                        options={[0, 15, 30, 60] as any[]}
+                        selected={reminderMinutes as any}
+                        onSelect={(v: any) => setReminderMinutes(v)}
+                        labels={['None', '15m', '30m', '1h']}
+                      />
+                    </FieldRow>
+                  )}
                 </>
               )}
             </View>
@@ -250,25 +280,27 @@ function FieldRow({ label, children }: { label: string; children: React.ReactNod
   );
 }
 
-function SegmentControl<T extends string>({
+function SegmentControl<T>({
   options,
   selected,
   onSelect,
+  labels,
 }: {
   options: T[];
   selected: T;
   onSelect: (v: T) => void;
+  labels?: string[];
 }) {
   return (
     <View style={styles.segment}>
-      {options.map((o) => (
+      {options.map((o, i) => (
         <TouchableOpacity
-          key={o}
+          key={String(o)}
           style={[styles.segmentOption, selected === o && styles.segmentSelected]}
           onPress={() => onSelect(o)}
         >
           <Text style={[styles.segmentText, selected === o && styles.segmentTextSelected]}>
-            {o.charAt(0) + o.slice(1).toLowerCase()}
+            {labels ? labels[i] : (String(o).charAt(0) + String(o).slice(1).toLowerCase())}
           </Text>
         </TouchableOpacity>
       ))}

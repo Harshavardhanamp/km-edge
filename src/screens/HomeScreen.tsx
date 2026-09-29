@@ -9,7 +9,7 @@ import {
 import StatusDot from '../components/StatusDot';
 import TypePickerSheet from '../components/TypePickerSheet';
 import { getRecentRecords } from '../lib/db/recordStore';
-import { getUpcomingEvents, type CalendarEvent } from '../lib/calendar';
+import { getUpcomingEvents, requestCalendarPermission, type CalendarEvent } from '../lib/calendar';
 import { KEYS, get } from '../lib/secureStore';
 import { useScreenTracking } from '../lib/useScreenTracking';
 import { CAPTURE_TYPES, type CaptureKind, type EdgeRecord, type RecordType } from '../lib/types';
@@ -25,7 +25,9 @@ export default function HomeScreen({ navigation }: any) {
   useEffect(() => {
     get(KEYS.GKS_USERNAME).then((u) => setDisplayName(u ?? ''));
     setRecentRecords(getRecentRecords(5));
-    getUpcomingEvents(7).then(setUpcomingEvents);
+    requestCalendarPermission().then((granted) => {
+      if (granted) getUpcomingEvents(7).then(setUpcomingEvents);
+    });
   }, []);
 
   function handleTypeSelect(type: RecordType, captureKind: CaptureKind) {
@@ -55,7 +57,7 @@ export default function HomeScreen({ navigation }: any) {
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Upcoming</Text>
             {upcomingEvents.map((ev) => (
-              <View key={ev.id} style={styles.eventRow}>
+              <View key={ev.nativeId} style={styles.eventRow}>
                 <Text style={styles.eventDate}>{formatEventDate(ev)}</Text>
                 <Text style={styles.eventTitle} numberOfLines={1}>{ev.title}</Text>
               </View>

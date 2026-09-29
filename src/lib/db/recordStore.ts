@@ -55,15 +55,21 @@ function rowToRecord(row: RecordRow): EdgeRecord {
 }
 
 export function createRecord(
-  record: Omit<EdgeRecord, 'attachments'> & { content_sha256: string }
+  record: Omit<EdgeRecord, 'attachments'> & {
+    content_sha256: string;
+    native_calendar_event_id?: string | null;
+    has_calendar_entry?: boolean;
+    reminder_minutes?: number | null;
+  }
 ): void {
   db.withTransactionSync(() => {
     db.runSync(
       `INSERT INTO records (
         edge_id, gks_id, schema_version, type, capture_kind, title, content,
         created, author, classification, importance, tags, life_areas, place,
-        about, relationships, captured_at, sync_status, content_sha256
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        about, relationships, captured_at, sync_status, content_sha256,
+        native_calendar_event_id, has_calendar_entry, reminder_minutes
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       record.edge_id,
       record.gks_id,
       record.schema_version,
@@ -82,7 +88,10 @@ export function createRecord(
       JSON.stringify(record.relationships),
       record.captured_at,
       record.sync_status,
-      record.content_sha256
+      record.content_sha256,
+      record.native_calendar_event_id ?? null,
+      record.has_calendar_entry ? 1 : 0,
+      record.reminder_minutes ?? null
     );
 
     db.runSync(
@@ -101,7 +110,12 @@ export function createRecord(
 
 export function updateRecord(
   edge_id: string,
-  changes: Partial<EdgeRecord> & { content_sha256?: string }
+  changes: Partial<EdgeRecord> & {
+    content_sha256?: string;
+    native_calendar_event_id?: string | null;
+    has_calendar_entry?: boolean;
+    reminder_minutes?: number | null;
+  }
 ): void {
   db.withTransactionSync(() => {
     const existing = db.getFirstSync<RecordRow>(
@@ -225,4 +239,23 @@ export function getRecentRecords(n: number): EdgeRecord[] {
     n
   );
   return rows.map(rowToRecord);
+}
+
+export interface CalendarFields {
+  native_calendar_event_id: string | null;
+  has_calendar_entry: boolean;
+  reminder_minutes: number | null;
+}
+
+export function getCalendarFields(edge_id: string): CalendarFields | null {
+  const row = db.getFirstSync<Pick<RecordRow, 'native_calendar_event_id' | 'has_calendar_entry' | 'reminder_minutes'>>(
+    `SELECT native_calendar_event_id, has_calendar_entry, reminder_minutes FROM records WHERE edge_id = ?`,
+    edge_id
+  );
+  if (!row) return null;
+  return {
+    native_calendar_event_id: row.native_calendar_event_id,
+    has_calendar_entry: row.has_calendar_entry === 1,
+    reminder_minutes: row.reminder_minutes,
+  };
 }

@@ -10,6 +10,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import AppHeader from '../components/AppHeader';
 import { db } from '../lib/db/index';
 import { getAllCalendars, getSelectedCalendarIds, saveSelectedCalendarIds, requestCalendarPermission, type DeviceCalendar } from '../lib/calendar';
 import { KEYS, clearSession, get } from '../lib/secureStore';
@@ -95,6 +96,8 @@ export default function SettingsScreen({ navigation }: any) {
   const usedMB = (usedBytes / 1024 / 1024).toFixed(1);
 
   return (
+    <View style={styles.outer}>
+    <AppHeader title="Settings" />
     <ScrollView style={styles.scroll} contentContainerStyle={styles.content}>
       {/* ACCOUNT */}
       <Text style={styles.sectionHeader}>Account</Text>
@@ -157,6 +160,7 @@ export default function SettingsScreen({ navigation }: any) {
         </TouchableOpacity>
       </View>
     </ScrollView>
+    </View>
   );
 }
 
@@ -172,7 +176,8 @@ function Row({ label, value }: { label: string; value: string }) {
 const colors = { bg: '#FDF8F4', accent: '#C17A3A', text: '#2D2016', border: '#E0D0C0' };
 
 const styles = StyleSheet.create({
-  scroll: { flex: 1, backgroundColor: colors.bg },
+  outer: { flex: 1, backgroundColor: colors.bg },
+  scroll: { flex: 1 },
   content: { padding: 20, gap: 4, paddingBottom: 40 },
   sectionHeader: {
     fontSize: 11,

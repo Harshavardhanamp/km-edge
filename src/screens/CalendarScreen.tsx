@@ -13,6 +13,7 @@ import {
   requestCalendarPermission,
   type CalendarEvent,
 } from '../lib/calendar';
+import AppHeader from '../components/AppHeader';
 import { useScreenTracking } from '../lib/useScreenTracking';
 
 const DAYS = ['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su'];
@@ -89,6 +90,7 @@ export default function CalendarScreen({ navigation }: any) {
 
   return (
     <View style={styles.container}>
+      <AppHeader title="Calendar" />
       {/* Month navigation */}
       <View style={styles.monthRow}>
         <TouchableOpacity onPress={prevMonth} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
