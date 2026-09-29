@@ -125,7 +125,7 @@ If a user somehow reaches the home screen without cloud storage connected (e.g. 
 - When cloud storage reconnects, buffer is flushed automatically — no user action needed
 - Buffer survives app backgrounding; does not survive app force-quit or device reboot (acceptable: data is captured in memory, not lost permanently if cloud reconnects before quit)
 
-> **Open question for design phase:** Should the buffer survive a force-quit/reboot? That requires writing to device-local SQLite, which is a larger decision. Flagged for design.
+> **V1 decision:** Buffer is memory-only. Records in the buffer are lost on force-quit or device reboot. Acceptable for V1 given low-adoption context. V2 will upgrade to device-local SQLite persistence if usage warrants it (YAGNI).
 
 ---
 
