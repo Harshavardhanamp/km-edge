@@ -12,6 +12,24 @@
 
 The V2 sync engine transmits locally-captured records and their attachments from the edge device to the Generational Knowledge System (GKS) server. On each sync run, the engine performs a pre-flight connectivity and configuration check, resets any deltas left in-flight by a previous crash, processes all pending deltas in sequence-number order (each independently so one failure does not block others), uploads attachments for newly-acknowledged records, flushes buffered telemetry events, and finalises the run with a batch checksum verification pass that compares every synced record's SHA-256 hash against the values stored on GKS. The result is persisted to SecureStore so the UI can display "last synced X min ago" without querying the server. The engine is triggered automatically every 15 minutes via `expo-background-fetch`, on app foreground when GKS is reachable, and manually via "Sync now" in StatusDetailScreen.
 
+### 1.1 Foreground Trigger
+
+The foreground trigger (REQ-0012 F1.1) is wired in `AppShell.tsx` via React Native's `AppState` API:
+
+```typescript
+useEffect(() => {
+  const sub = AppState.addEventListener('change', (state) => {
+    if (state === 'active') {
+      // Only run if GKS is reachable — reuse the existing probe result from StatusDot context
+      if (gksReachable) runSync();
+    }
+  });
+  return () => sub.remove();
+}, [gksReachable]);
+```
+
+`gksReachable` comes from whatever context or state already drives the StatusDot probe result. No new probe is issued — the foreground sync runs only if the last known probe result was online. This avoids hammering GKS on every foreground event when the device is offline.
+
 ---
 
 ## 2. Data Flow

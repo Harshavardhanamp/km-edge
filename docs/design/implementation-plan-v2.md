@@ -197,12 +197,13 @@
 
 ## Phase 5 — `attachment_edge_ids` Population
 
-### Step 17 — Populate `attachment_edge_ids` in `createRecord()`, `updateRecord()`, `softDeleteRecord()`
+### Step 17 — Calendar cleanup on soft delete + populate `attachment_edge_ids`
 - **File:** `src/lib/db/recordStore.ts`
+- `softDeleteRecord()`: before inserting the DELETE delta, attempt `deleteEvent(record.native_calendar_event_id)` if `record.has_calendar_entry === 1`; catch and ignore all errors (attachment-sync.md Section 5.2 / REQ-0012 F4.3)
 - `createRecord()`: after inserting into `records` and `record_attachments`, query `record_attachments` for current attachment IDs, JSON-stringify, pass to `delta_log` INSERT (replacing `'[]'` literal)
 - `updateRecord()`: same — query at delta INSERT time to reflect current attachment set
 - `softDeleteRecord()`: query `record_attachments` at deletion time, store IDs in DELETE delta; after inserting DELETE delta, back-fill `delete_delta_seq` on any `pending_delete = 1` attachments for this record where `delete_delta_seq IS NULL` (attachment-sync.md Section 8.2)
-- Gap reference: attachment-sync.md Gap 9, Gap 10; REQ-0012 F2.4
+- Gap reference: attachment-sync.md Gap 9, Gap 10; REQ-0012 F2.4, F4.3
 - **Complexity:** M
 - **Depends on:** Step 1 (delete_delta_seq column), Step 3 (unlinkAttachment writes seq)
 
@@ -301,6 +302,7 @@ Phase 1 has no external dependencies and establishes the schema and store primit
 - [ ] `last_synced_at` and `gks_synced_count` written to SecureStore after each successful sync run
 - [ ] `buildAuthHeaders` uses direct import (no dynamic import)
 - [ ] Staging area protocol in `addAttachment()` / `saveAttachment()`; `cleanStagingDirectory()` called on AppShell mount
+- [ ] `softDeleteRecord()` attempts `deleteEvent()` when `has_calendar_entry = 1`; ignores calendar failure
 - [ ] `attachment_edge_ids` populated correctly in all three record mutation functions
 - [ ] `softDeleteRecord()` back-fills `delete_delta_seq` on pending-delete attachments
 - [ ] GKS `content_sha256` stored in frontmatter for edge-originated records
@@ -309,6 +311,7 @@ Phase 1 has no external dependencies and establishes the schema and store primit
 - [ ] `kmedge` scheme registered in `app.json`
 - [ ] Warm-start deep link navigates to RecordDetail or shows "Record not found" toast
 - [ ] Cold-start deep link survives auth flow and navigates after session restore
+- [ ] AppShell foreground trigger: `AppState 'active'` fires `runSync()` when GKS is reachable
 - [ ] StatusDot pulses during sync; shows amber when any delta is REJECTED
 - [ ] HomeScreen shows "Last synced X min ago" label; refreshes recent records after sync
 - [ ] StatusDetailScreen lists REJECTED deltas with per-record Retry button

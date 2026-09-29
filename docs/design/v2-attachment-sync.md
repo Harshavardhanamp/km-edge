@@ -244,7 +244,29 @@ WHERE a.pending_delete = 1
 
 This query runs during every sync pass (after delta processing) and from the Settings screen "Clear deleted attachments" button.
 
-### 5.2 Never-Synced Delete
+### 5.2 Calendar Event Cleanup on Delete (F4.3)
+
+Before the sync engine transmits a DELETE delta, `softDeleteRecord()` must attempt to remove any associated native calendar event. This applies to records where `has_calendar_entry = 1`.
+
+**`softDeleteRecord()` in `recordStore.ts`:**
+
+```typescript
+if (record.has_calendar_entry) {
+  try {
+    await deleteEvent(record.native_calendar_event_id);
+  } catch {
+    // Permission revoked or event already gone — proceed with record delete
+  }
+}
+```
+
+The calendar deletion is attempted locally, at soft-delete time, not during sync. It is not retried. Any failure (permission revoked, event already deleted, calendar unavailable) is silently ignored — the record deletion proceeds regardless. This matches REQ-0012 F4.3 exactly.
+
+`deleteEvent` is imported from `src/lib/calendar.ts`. No new dependency.
+
+---
+
+### 5.3 Never-Synced Delete
 
 When a DELETE delta is processed and `gks_record_id` is null on that delta row, the record was never transmitted to GKS. There is no remote reference to protect. In this case:
 
@@ -253,7 +275,7 @@ When a DELETE delta is processed and `gks_record_id` is null on that delta row, 
 
 This path is identified in the sync engine by checking `delta_log.gks_record_id IS NULL` on DELETE deltas before making any network call.
 
-### 5.3 unlinkAttachment() — V2 Behavior
+### 5.4 unlinkAttachment() — V2 Behavior
 
 Current V1 behavior sets `pending_delete = 1` but does not populate `delete_delta_seq`. V2 adds the seq lookup:
 
@@ -298,7 +320,7 @@ If no DELETE delta exists yet (the attachment was unlinked before `softDeleteRec
 
 Note: `softDeleteRecord()` must write `delete_delta_seq` onto any `pending_delete = 1` attachment rows for the record that still have a null `delete_delta_seq`, immediately after inserting the DELETE delta. This covers the case where unlink runs before delete.
 
-### 5.4 purgeAttachment() Behavior
+### 5.5 purgeAttachment() Behavior
 
 No change to the existing function signature. Behavior:
 
