@@ -51,6 +51,7 @@ function rowToRecord(row: RecordRow): EdgeRecord {
     captured_at: row.captured_at,
     sync_status: row.sync_status as SyncStatus,
     sync_error: null,
+    content_sha256: row.content_sha256,
   };
 }
 

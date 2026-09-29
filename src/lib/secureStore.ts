@@ -8,6 +8,8 @@ export const KEYS = {
   OFFLINE_VERIFIER_SALT: 'offline_verifier_salt',
   OFFLINE_ATTEMPT_COUNT: 'offline_attempt_count',
   CALENDAR_SELECTED_IDS: 'calendar_selected_ids', // preference, not cleared on logout
+  LAST_SYNCED_AT: 'last_synced_at',
+  GKS_SYNCED_COUNT: 'gks_synced_count',
 } as const;
 
 export async function get(key: string): Promise<string | null> {

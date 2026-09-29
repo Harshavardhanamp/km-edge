@@ -2,17 +2,18 @@ import * as FileSystem from 'expo-file-system';
 import * as Network from 'expo-network';
 import { db } from '../db/index';
 import { getRecord } from '../db/recordStore';
-import { getAttachmentsForRecord, purgeAttachment } from '../db/attachmentStore';
+import { purgeAttachment } from '../db/attachmentStore';
 import {
   getPendingDeltas,
   markInFlight,
   acknowledgeDelta,
   rejectDelta,
+  resetDeltaToPending,
   resetInFlightToPending,
   type DeltaEntry,
 } from '../db/deltaStore';
-import { fetchWithReauth } from '../gksClient';
-import { get, KEYS } from '../secureStore';
+import { fetchWithReauth, authHeaders } from '../gksClient';
+import { get, set, KEYS } from '../secureStore';
 
 export type SyncResult = {
   synced: number;
@@ -24,15 +25,19 @@ export type SyncResult = {
 // Map edge capture_kind to GKS record_type string
 function gksCaptureType(capture_kind: string): string {
   const map: Record<string, string> = {
-    JOURNAL: 'JOURNAL',
-    NOTE: 'NOTE',
-    EVENT: 'EVENT',
-    DECISION: 'DECISION',
-    LESSON: 'LESSON',
-    GOAL: 'GOAL',
-    PERSON: 'PERSON',
+    JOURNAL: 'journal',
+    NOTE: 'note',
+    EVENT: 'event',
+    DECISION: 'decision',
+    LESSON: 'lesson',
+    GOAL: 'goal',
+    PERSON: 'person',
   };
-  return map[capture_kind] ?? 'NOTE';
+  return map[capture_kind] ?? 'note';
+}
+
+function buildAuthHeaders(): Record<string, string> {
+  return authHeaders();
 }
 
 async function uploadAttachments(
@@ -40,70 +45,101 @@ async function uploadAttachments(
   edge_id: string,
   gks_record_id: string
 ): Promise<void> {
-  const attachments = getAttachmentsForRecord(edge_id);
+  // Only attachments not yet synced
+  const attachments = db.getAllSync<{
+    edge_attachment_id: string;
+    sha256: string;
+    blob_path: string;
+  }>(
+    `SELECT a.edge_attachment_id, a.sha256, a.blob_path
+     FROM attachments a
+     JOIN record_attachments ra ON ra.edge_attachment_id = a.edge_attachment_id
+     WHERE ra.edge_id = ? AND a.sync_status = 'PENDING' AND a.gks_attachment_id IS NULL`,
+    edge_id
+  );
+
   for (const att of attachments) {
-    if (att.gks_attachment_id) continue; // already uploaded
-
-    // Read blob
-    const row = db.getFirstSync<{ blob_path: string }>(
-      `SELECT blob_path FROM attachments WHERE edge_attachment_id = ?`,
-      att.edge_attachment_id
-    );
-    if (!row) continue;
-
-    const fullPath = `${FileSystem.documentDirectory}${row.blob_path}`;
+    const fullPath = `${FileSystem.documentDirectory}${att.blob_path}`;
     const info = await FileSystem.getInfoAsync(fullPath);
     if (!info.exists) continue;
 
-    // Upload via multipart — expo FileSystem.uploadAsync handles multipart
-    const uploadRes = await FileSystem.uploadAsync(
-      `${baseUrl}/api/v1/attachments/workflow/NEW_ENTRY`,
-      fullPath,
-      {
-        httpMethod: 'POST',
-        uploadType: FileSystem.FileSystemUploadType.MULTIPART,
-        fieldName: 'file',
-        parameters: { entity_ref: gks_record_id },
-        headers: await buildAuthHeaders(baseUrl),
-      }
-    );
+    let uploadRes: { status: number; body: string };
+    try {
+      uploadRes = await FileSystem.uploadAsync(
+        `${baseUrl}/api/v1/attachments/workflow/NEW_ENTRY`,
+        fullPath,
+        {
+          httpMethod: 'POST',
+          uploadType: FileSystem.FileSystemUploadType.MULTIPART,
+          fieldName: 'file',
+          parameters: { entity_ref: gks_record_id },
+          headers: buildAuthHeaders(),
+        }
+      );
+    } catch {
+      // Network error — leave PENDING, skip this attachment
+      continue;
+    }
+
+    if (uploadRes.status === 400) {
+      let errBody: { detail?: string } = {};
+      try { errBody = JSON.parse(uploadRes.body); } catch { /* ignore */ }
+      db.runSync(
+        `UPDATE attachments SET sync_status = 'FAILED', sync_error = ? WHERE edge_attachment_id = ?`,
+        errBody.detail ?? 'GKS_REJECTED',
+        att.edge_attachment_id
+      );
+      continue;
+    }
 
     if (uploadRes.status !== 200 && uploadRes.status !== 201) continue;
 
-    const body = JSON.parse(uploadRes.body);
-    const gks_attachment_id: string = body.attachment_id;
+    let body: { attachment_id?: string; sha256?: string };
+    try { body = JSON.parse(uploadRes.body); } catch { continue; }
 
-    // Bind attachment to record
-    const bindRes = await fetch(
-      `${baseUrl}/api/v1/attachments/records/${gks_record_id}/attachments/${gks_attachment_id}`,
-      { method: 'POST', headers: await buildAuthHeaders(baseUrl) }
-    );
-    if (!bindRes.ok) continue;
+    // Checksum verification
+    if (body.sha256 !== att.sha256) {
+      db.runSync(
+        `UPDATE attachments SET sync_status = 'FAILED', sync_error = 'CHECKSUM_MISMATCH' WHERE edge_attachment_id = ?`,
+        att.edge_attachment_id
+      );
+      continue;
+    }
+
+    const gks_attachment_id = body.attachment_id;
+    if (!gks_attachment_id) continue;
+
+    // Bind to record
+    try {
+      const bindRes = await fetch(
+        `${baseUrl}/api/v1/attachments/records/${gks_record_id}/attachments/${gks_attachment_id}`,
+        { method: 'POST', headers: buildAuthHeaders() }
+      );
+      if (!bindRes.ok) continue;
+    } catch {
+      continue;
+    }
 
     db.runSync(
-      `UPDATE attachments SET gks_attachment_id = ? WHERE edge_attachment_id = ?`,
+      `UPDATE attachments SET gks_attachment_id = ?, sync_status = 'SYNCED', sync_error = NULL WHERE edge_attachment_id = ?`,
       gks_attachment_id,
       att.edge_attachment_id
     );
   }
 
-  // Purge any blobs marked pending_delete that are now safe to remove
+  // Purge blobs only when DELETE delta is ACKNOWLEDGED
   const toDelete = db.getAllSync<{ edge_attachment_id: string }>(
-    `SELECT edge_attachment_id FROM attachments WHERE pending_delete = 1`
+    `SELECT a.edge_attachment_id
+     FROM attachments a
+     JOIN delta_log d ON d.seq = a.delete_delta_seq
+     WHERE a.pending_delete = 1 AND d.status = 'ACKNOWLEDGED'`
   );
   for (const { edge_attachment_id } of toDelete) {
     await purgeAttachment(edge_attachment_id);
   }
 }
 
-async function buildAuthHeaders(baseUrl: string): Promise<Record<string, string>> {
-  // Re-use the module-level session cookie from gksClient via fetchWithReauth pattern.
-  // We import authHeaders lazily to avoid circular deps.
-  const { authHeaders } = await import('../gksClient');
-  return authHeaders();
-}
-
-async function syncDelta(baseUrl: string, delta: DeltaEntry): Promise<'ok' | 'fail' | 'skip'> {
+async function syncDelta(baseUrl: string, delta: DeltaEntry): Promise<'ok' | 'fail' | 'skip' | 'stop'> {
   if (delta.operation === 'DELETE') {
     const gks_record_id = delta.gks_record_id ?? delta.gks_id;
     if (!gks_record_id) {
@@ -112,17 +148,30 @@ async function syncDelta(baseUrl: string, delta: DeltaEntry): Promise<'ok' | 'fa
       return 'ok';
     }
     markInFlight(delta.seq);
-    const res = await fetchWithReauth(baseUrl, `${baseUrl}/api/v1/records/${gks_record_id}`, {
-      method: 'DELETE',
-    });
+
+    let res: Response | null;
+    try {
+      res = await fetchWithReauth(baseUrl, `${baseUrl}/api/v1/records/${gks_record_id}`, {
+        method: 'DELETE',
+      });
+    } catch {
+      resetDeltaToPending(delta.seq);
+      return 'stop';
+    }
+
     if (!res) {
-      rejectDelta(delta.seq, 'Auth failed');
-      return 'fail';
+      // Auth failure — reset to PENDING, stop processing
+      resetDeltaToPending(delta.seq);
+      return 'stop';
     }
     if (res.status === 404 || res.status === 204) {
       // 404 = already gone, 204 = deleted now — both are success
       acknowledgeDelta(delta.seq, gks_record_id);
       return 'ok';
+    }
+    if (res.status >= 500) {
+      resetDeltaToPending(delta.seq);
+      return 'skip';
     }
     rejectDelta(delta.seq, `HTTP ${res.status}`);
     return 'fail';
@@ -138,25 +187,33 @@ async function syncDelta(baseUrl: string, delta: DeltaEntry): Promise<'ok' | 'fa
 
   const payload = {
     edge_id: delta.edge_id,
-    record_type: record.type,
-    capture_kind: gksCaptureType(record.capture_kind),
+    record_type: gksCaptureType(record.capture_kind),
     title: record.title,
     content: record.content,
+    content_sha256: record.content_sha256,
+    preserve_authored_body: true,
     tags: record.tags,
     importance: record.importance,
     classification: record.classification,
     life_areas: record.life_areas,
   };
 
-  const res = await fetchWithReauth(baseUrl, `${baseUrl}/api/v1/records`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(payload),
-  });
+  let res: Response | null;
+  try {
+    res = await fetchWithReauth(baseUrl, `${baseUrl}/api/v1/records`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+  } catch {
+    resetDeltaToPending(delta.seq);
+    return 'stop';
+  }
 
   if (!res) {
-    rejectDelta(delta.seq, 'Auth failed');
-    return 'fail';
+    // Auth failure — reset to PENDING, stop processing
+    resetDeltaToPending(delta.seq);
+    return 'stop';
   }
 
   if (res.status === 409) {
@@ -228,6 +285,46 @@ async function flushTelemetry(baseUrl: string): Promise<number> {
   return rows.length;
 }
 
+async function verifyChecksums(baseUrl: string): Promise<void> {
+  let res: Response | null;
+  try {
+    res = await fetchWithReauth(baseUrl, `${baseUrl}/api/v1/sync/status`, {
+      method: 'GET',
+    });
+  } catch {
+    return; // network error — skip verification this run
+  }
+  if (!res || !res.ok) return;
+
+  const data = await res.json().catch(() => null);
+  if (!data?.records) return;
+
+  for (const gksRec of data.records as { edge_id: string; content_sha256: string }[]) {
+    const local = db.getFirstSync<{
+      content_sha256: string;
+      seq: number;
+      retry_count: number;
+    }>(
+      `SELECT r.content_sha256, d.seq, COALESCE(d.retry_count, 0) AS retry_count
+       FROM records r
+       JOIN delta_log d ON d.edge_id = r.edge_id AND d.status = 'ACKNOWLEDGED'
+       WHERE r.edge_id = ?`,
+      gksRec.edge_id
+    );
+
+    if (!local) continue;
+    if (local.content_sha256 === gksRec.content_sha256) continue;
+
+    // Mismatch
+    if (local.retry_count >= 2) {
+      // 3rd failure — reject permanently
+      rejectDelta(local.seq, 'CHECKSUM_MISMATCH');
+    } else {
+      resetDeltaToPending(local.seq);
+    }
+  }
+}
+
 export async function runSync(): Promise<SyncResult> {
   const result: SyncResult = { synced: 0, failed: 0, skipped: 0, telemetryFlushed: 0 };
 
@@ -243,11 +340,18 @@ export async function runSync(): Promise<SyncResult> {
   const deltas = getPendingDeltas();
   for (const delta of deltas) {
     const outcome = await syncDelta(baseUrl, delta);
+    if (outcome === 'stop') break;
     if (outcome === 'ok') result.synced++;
     else if (outcome === 'fail') result.failed++;
     else result.skipped++;
   }
 
   result.telemetryFlushed = await flushTelemetry(baseUrl);
+
+  await verifyChecksums(baseUrl);
+
+  await set(KEYS.LAST_SYNCED_AT, new Date().toISOString());
+  await set(KEYS.GKS_SYNCED_COUNT, String(result.synced));
+
   return result;
 }

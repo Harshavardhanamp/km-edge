@@ -57,6 +57,7 @@ export interface EdgeRecord {
   captured_at: string;           // ISO8601 full timestamp
   sync_status: SyncStatus;
   sync_error: string | null;     // populated when sync_status === 'REJECTED'
+  content_sha256: string;
 }
 
 // Mapping from user-facing label → GKS type + capture_kind
