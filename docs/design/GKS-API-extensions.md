@@ -62,6 +62,43 @@ This is optional for the initial sync release — single-record POST works. Add 
 
 ---
 
+## Extension 4: Telemetry Ingest + Admin Dashboard (REQ-0008)
+
+### 4a — Telemetry ingest endpoint
+**New endpoint:** `POST /api/v1/km-edge/telemetry`
+
+Accepts batch of telemetry events from the edge (via V2 sync).
+MEMBER-level auth (user pushes their own events).
+
+Stores in new GKS tables: `km_edge_sessions`, `km_edge_screen_visits`, `km_edge_actions`, `km_edge_errors`.
+
+### 4b — Admin dashboard tab: "KM-Edge Usage"
+ADMINISTRATOR role only. Shows:
+- DAU/WAU/MAU per user
+- Per-user session timeline, actions, screen visits, errors
+- Feature usage breakdown
+- Error log
+
+### 4c — Central server push
+Hourly background job in GKS pushes telemetry to the central observability server.
+`POST <central_server>/tenants/{tenant_id}/events` with `tenant_api_key`.
+GKS self-registers with central server on first push if not yet registered.
+
+**GKS files to add/change:**
+- New tables: migration in `src/generational_kb/` 
+- New endpoint: `src/generational_kb/api/observability.py`
+- New admin UI: `frontend/src/pages/admin/KMEdgeUsage.tsx`
+- New background job: `src/generational_kb/km_edge_telemetry_push.py`
+
+---
+
 ## GKS Change Tracking
 
-These extensions should be filed as issues in the `generational-knowledge-system` repo and implemented before KM-Edge sync development begins. The `edge_id` deduplication (Extension 1) is a hard prerequisite for sync correctness.
+All extensions should be filed as issues in the `generational-knowledge-system` repo.
+
+| Extension | Priority | When needed |
+|---|---|---|
+| Extension 1: `edge_id` dedup | Hard prerequisite | Before V2 sync |
+| Extension 2: Sync status endpoint | Required | Before V2 sync |
+| Extension 3: Batch ingest | Optional performance | After V2 sync ships |
+| Extension 4: Telemetry + admin dashboard | Required | V2 (telemetry batched with sync) |
