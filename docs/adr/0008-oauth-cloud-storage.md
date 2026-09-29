@@ -1,7 +1,7 @@
 # ADR-0008: Cloud Storage OAuth — Full Implementation in Login Sprint
 
 **Date:** 2026-09-29  
-**Status:** Accepted  
+**Status:** Superseded by ADR-0009  
 **Author:** Harshavardhana P
 
 ## Context

@@ -1,7 +1,7 @@
 # ADR-0004: Storage Strategy — Cloud Drive as User-Attached Store
 
 **Date:** 2026-09-29  
-**Status:** Accepted  
+**Status:** Superseded by ADR-0009  
 **Author:** Harshavardhana P
 
 ## Context

@@ -4,7 +4,7 @@
 **Status:** Frozen  
 **Author:** Harshavardhana P  
 **Requirement:** REQ-0004  
-**Related ADRs:** ADR-0003 (offline auth), ADR-0004 (storage)
+**Related ADRs:** ADR-0003 (offline auth), ADR-0009 (local storage)
 
 ---
 
@@ -30,7 +30,7 @@ App launch
   │    └─ NO  → Server discovery screen → Login screen
   │
   └─ Login screen
-       ├─ Online + valid credentials → Cloud storage setup (if first time) → Home
+       ├─ Online + valid credentials → Home (no storage gate — local storage, ADR-0009)
        ├─ Online + wrong credentials → Inline error, retry
        ├─ Offline + prior login exists → Offline login → Home (OFFLINE mode)
        └─ Offline + 3 failed attempts → Lockout screen
@@ -160,7 +160,6 @@ All stored in `expo-secure-store` (backed by iOS Keychain / Android Keystore):
 | `offline_verifier` | Argon2id hash | Offline login |
 | `offline_verifier_salt` | Salt bytes | Offline login |
 | `offline_attempt_count` | Integer string | Lockout tracking |
-| `storage_enc_key` | AES-256 key bytes | Cloud storage encryption (ADR-0004) |
 
 ---
 
@@ -174,33 +173,9 @@ When the GKS session cookie expires (8h absolute, 30min idle) while the app is o
 
 ---
 
-## Cloud Storage Setup Screen (post-login gate)
+## Storage
 
-Shown after first successful login if no cloud storage is connected. User cannot skip this.
-
-```
-┌─────────────────────────────────┐
-│  Connect your storage           │
-│                                 │
-│  KM-Edge needs a place to       │
-│  store your records securely.   │
-│                                 │
-│  ┌─────────────────────────┐    │
-│  │   Google Drive          │    │
-│  └─────────────────────────┘    │
-│  ┌─────────────────────────┐    │
-│  │   Dropbox               │    │
-│  └─────────────────────────┘    │
-│                                 │
-│  Your data is encrypted before  │
-│  it leaves this device.         │
-│                                 │
-└─────────────────────────────────┘
-```
-
-- Each button triggers the provider's OAuth2 flow (in-app browser)
-- On success: app folder created, encryption key generated and stored, proceed to home screen
-- No skip option
+Local device only (ADR-0009). No cloud storage setup screen. No OAuth gate. Records go to `expo-sqlite` + `expo-file-system` app sandbox immediately after login. Always available, no external dependency.
 
 ---
 

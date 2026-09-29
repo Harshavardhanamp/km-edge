@@ -42,13 +42,10 @@ Before login is possible, the app must know where the user's GKS instance lives.
 Fresh install
   └── Login screen (username + password field)
        └── [GKS server not yet known] → server discovery (L1) first
-       └── Successful login
-            └── Cloud storage not yet connected?
-                 ├── YES → Cloud storage setup screen (mandatory, cannot skip)
-                 └── NO  → Home screen
+       └── Successful login → Home screen
 ```
 
-The user **cannot proceed past cloud storage setup** until a provider (Google Drive or Dropbox) is connected. This is a hard gate.
+No cloud storage setup gate. Storage is local device — always available, no setup required. (ADR-0009)
 
 ---
 
@@ -97,35 +94,20 @@ When the GKS server is unreachable and a prior successful login exists on the de
 
 ---
 
-## L7 — Cloud Storage Not Connected (degraded mode)
+## L7 — Local Storage (ADR-0009)
 
-If a user somehow reaches the home screen without cloud storage connected (e.g. after lockout + online login bypass):
+Storage is always local device SQLite + filesystem. No cloud provider, no OAuth, no setup gate.
 
-- A prominent persistent banner is shown: "Storage not configured — captures will not be saved"
-- New captures are held in device memory buffer only
-- Nothing is persisted to durable storage until cloud storage is connected
-- Settings tab always accessible to connect storage
+- Storage is always available immediately after login
+- No "storage unavailable" state for the storage layer itself
+- OS backup (iCloud / Android Auto Backup) provides passive durability
+- GKS sync (V2) is the primary durability and multi-device mechanism
 
----
-
-## L8 — Cloud Storage Full
+## L8 — Device Storage Full
 
 - App does **not** block capture
-- A prominent warning banner is shown: "Cloud storage is full — free up space to persist new records"
-- New captures are held in device memory buffer
-- When space becomes available, buffer is flushed to cloud storage automatically
-
----
-
-## L9 — Cloud Storage Unavailable (no signal / provider outage)
-
-- App does **not** block capture
-- New captures go to a device-local memory buffer
-- User sees an indicator: "Saving locally — will sync to cloud when available"
-- When cloud storage reconnects, buffer is flushed automatically — no user action needed
-- Buffer survives app backgrounding; does not survive app force-quit or device reboot (acceptable: data is captured in memory, not lost permanently if cloud reconnects before quit)
-
-> **V1 decision:** Buffer is memory-only. Records in the buffer are lost on force-quit or device reboot. Acceptable for V1 given low-adoption context. V2 will upgrade to device-local SQLite persistence if usage warrants it (YAGNI).
+- A warning banner is shown when device storage is critically low (OS-level threshold)
+- User directed to free device space via Settings
 
 ---
 

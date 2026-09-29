@@ -12,9 +12,8 @@
 ## Prerequisites Before Starting
 
 - [ ] `hash-wasm` npm package available (install in Step 2)
-- [ ] `expo-auth-session` available (already in Expo SDK 57 — no install needed)
-- [ ] Google Drive OAuth2 client IDs (needed before Step 7 — Harshavardhana P to register in Google Cloud Console)
-- [ ] Dropbox OAuth2 client ID (needed before Step 7 — Harshavardhana P to register in Dropbox App Console)
+
+Note: Cloud storage OAuth prerequisites removed. Storage is local device (ADR-0009).
 
 ---
 
@@ -23,7 +22,9 @@
 ### Step 1 — `src/lib/secureStore.ts`
 Typed wrapper over `expo-secure-store`. Defines all credential key constants and typed get/set/delete helpers. No business logic — pure storage interface.
 
-Keys: `gks_server_url`, `gks_username`, `gks_password_enc`, `offline_verifier`, `offline_verifier_salt`, `offline_attempt_count`, `storage_enc_key`.
+Keys: `gks_server_url`, `gks_username`, `gks_password_enc`, `offline_verifier`, `offline_verifier_salt`, `offline_attempt_count`.
+
+Note: `storage_enc_key` removed — no cloud drive encryption needed (ADR-0009).
 
 ### Step 2 — `src/lib/auth.ts`
 Argon2id offline verifier using `hash-wasm`.
@@ -58,24 +59,20 @@ GKS HTTP client — auth surface only for this sprint.
 - Single button: "Try online login" — re-enables login screen, requires GKS online
 - No other navigation
 
-### Step 7 — `src/screens/StorageSetupScreen.tsx`
-- Two buttons: Google Drive, Dropbox
-- Each triggers `expo-auth-session` OAuth2 browser flow
-- On success: store OAuth token, create app folder, generate + store `storage_enc_key`
-- No skip option
-- **Blocked on:** client IDs from Harshavardhana P
+### ~~Step 7 — StorageSetupScreen~~ — Removed (ADR-0009)
+Cloud storage setup screen eliminated. Local device storage requires no setup or OAuth.
 
-### Step 8 — `src/components/StatusDot.tsx`
+### Step 7 — `src/components/StatusDot.tsx`
 - Props: `gksState: 'online' | 'syncing' | 'offline'`, `cloudState: 'ok' | 'unavailable'`
 - Renders emoji dot + short label
 - Used in every screen header
 
-### Step 9 — Navigation wiring (`src/navigation/`)
+### Step 8 — Navigation wiring (`src/navigation/`)
 - Unauthenticated stack: `ServerDiscovery → Login → StorageSetup`
 - Authenticated tab stack: `Home | Records | Calendar | Settings` (each with `StatusDot` in header)
 - Auth state drives which stack is active (stored session = authenticated)
 
-### Step 10 — Silent re-auth interceptor
+### Step 9 — Silent re-auth interceptor
 - In `gksClient.ts`: wrap all API calls; on 401 → call `login()` with stored credentials → retry once
 - On second 401: clear session, navigate to login screen with "Session expired" message
 
@@ -93,7 +90,7 @@ Steps 1–3 are pure logic with no UI — testable in isolation. Steps 4–7 bui
 - [ ] User can log in with GKS credentials (online)
 - [ ] User can log in offline after prior online login
 - [ ] 3 failed offline attempts triggers lockout; online login clears it
-- [ ] First-time user is gated on cloud storage setup before reaching home screen
+- [ ] Successful login lands directly on home screen (no storage gate)
 - [ ] Status dot visible in header on every screen
 - [ ] Silent re-auth handles 401 without user interruption
 - [ ] TypeScript: zero errors
