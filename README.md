@@ -30,7 +30,9 @@ src/            # Source code (added as requirements solidify)
 - [ADR-0005: Sync Architecture — Delta Log + Append-Only Audit Trail](docs/adr/0005-sync-architecture.md)
 - [ADR-0006: Development Process — Requirements → Design → Plan → Code](docs/adr/0006-development-process.md)
 - [ADR-0007: Argon2id Library — hash-wasm](docs/adr/0007-argon2id-library.md)
-- [ADR-0008: Cloud Storage OAuth — Full Implementation in Login Sprint](docs/adr/0008-oauth-cloud-storage.md)
+- [ADR-0008: Cloud Storage OAuth — Full Implementation in Login Sprint](docs/adr/0008-oauth-cloud-storage.md) *(Superseded by ADR-0009)*
+- [ADR-0009: Local Device Storage Over Cloud Drive](docs/adr/0009-local-storage-over-cloud-drive.md)
+- [ADR-0010: Release Strategy — V1 Beta then V2 Sync with Minimal Gap](docs/adr/0010-release-strategy.md)
 
 ### Requirements
 - [REQ-0001: Initial Requirements Overview](docs/requirements/REQ-0001-initial-requirements.md)
