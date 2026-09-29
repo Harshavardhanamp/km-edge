@@ -1,4 +1,5 @@
 import { db } from './index';
+import { deleteEvent } from '../calendar';
 import type { EdgeRecord, LifeArea, SyncStatus } from '../types';
 
 type RecordRow = {
@@ -95,16 +96,25 @@ export function createRecord(
       record.reminder_minutes ?? null
     );
 
+    const attachmentRows = db.getAllSync<{ edge_attachment_id: string }>(
+      `SELECT edge_attachment_id FROM record_attachments WHERE edge_id = ?`,
+      record.edge_id
+    );
+    const attachmentEdgeIds = JSON.stringify(
+      attachmentRows.map(r => r.edge_attachment_id)
+    );
+
     db.runSync(
       `INSERT INTO delta_log (
         edge_id, operation, record_type, capture_kind, timestamp,
         content_sha256, attachment_edge_ids, status
-      ) VALUES (?, 'CREATE', ?, ?, ?, ?, '[]', 'PENDING')`,
+      ) VALUES (?, 'CREATE', ?, ?, ?, ?, ?, 'PENDING')`,
       record.edge_id,
       record.type,
       record.capture_kind,
       new Date().toISOString(),
-      record.content_sha256
+      record.content_sha256,
+      attachmentEdgeIds
     );
   });
 }
@@ -174,28 +184,47 @@ export function updateRecord(
       edge_id
     );
 
+    const attachmentRows = db.getAllSync<{ edge_attachment_id: string }>(
+      `SELECT edge_attachment_id FROM record_attachments WHERE edge_id = ?`,
+      edge_id
+    );
+    const attachmentEdgeIds = JSON.stringify(
+      attachmentRows.map(r => r.edge_attachment_id)
+    );
+
     db.runSync(
       `INSERT INTO delta_log (
         edge_id, operation, record_type, capture_kind, timestamp,
         content_sha256, attachment_edge_ids, status
-      ) VALUES (?, 'UPDATE', ?, ?, ?, ?, '[]', 'PENDING')`,
+      ) VALUES (?, 'UPDATE', ?, ?, ?, ?, ?, 'PENDING')`,
       edge_id,
       merged.type,
       merged.capture_kind,
       now,
-      merged.content_sha256
+      merged.content_sha256,
+      attachmentEdgeIds
     );
   });
 }
 
-export function softDeleteRecord(edge_id: string): void {
-  db.withTransactionSync(() => {
-    const existing = db.getFirstSync<RecordRow>(
-      `SELECT type, capture_kind FROM records WHERE edge_id = ? AND is_deleted = 0`,
-      edge_id
-    );
-    if (!existing) return;
+export async function softDeleteRecord(edge_id: string): Promise<void> {
+  const existing = db.getFirstSync<RecordRow>(
+    `SELECT type, capture_kind, has_calendar_entry, native_calendar_event_id
+     FROM records WHERE edge_id = ? AND is_deleted = 0`,
+    edge_id
+  );
+  if (!existing) return;
 
+  // Attempt calendar cleanup — ignore all failures
+  if (existing.has_calendar_entry && existing.native_calendar_event_id) {
+    try {
+      await deleteEvent(existing.native_calendar_event_id);
+    } catch {
+      // permission revoked or event already gone — proceed regardless
+    }
+  }
+
+  db.withTransactionSync(() => {
     const now = new Date().toISOString();
     db.runSync(
       `UPDATE records SET is_deleted = 1, deleted_at = ?, sync_status = 'PENDING'
@@ -204,15 +233,40 @@ export function softDeleteRecord(edge_id: string): void {
       edge_id
     );
 
+    const attachmentRows = db.getAllSync<{ edge_attachment_id: string }>(
+      `SELECT edge_attachment_id FROM record_attachments WHERE edge_id = ?`,
+      edge_id
+    );
+    const attachmentEdgeIds = JSON.stringify(
+      attachmentRows.map(r => r.edge_attachment_id)
+    );
+
     db.runSync(
       `INSERT INTO delta_log (
         edge_id, operation, record_type, capture_kind, timestamp,
         attachment_edge_ids, status
-      ) VALUES (?, 'DELETE', ?, ?, ?, '[]', 'PENDING')`,
+      ) VALUES (?, 'DELETE', ?, ?, ?, ?, 'PENDING')`,
       edge_id,
       existing.type,
       existing.capture_kind,
-      now
+      now,
+      attachmentEdgeIds
+    );
+
+    const newSeq = db.getFirstSync<{ seq: number }>(
+      `SELECT last_insert_rowid() AS seq`
+    )!.seq;
+
+    db.runSync(
+      `UPDATE attachments
+       SET delete_delta_seq = ?
+       WHERE edge_attachment_id IN (
+         SELECT edge_attachment_id FROM record_attachments WHERE edge_id = ?
+       )
+       AND pending_delete = 1
+       AND delete_delta_seq IS NULL`,
+      newSeq,
+      edge_id
     );
   });
 }

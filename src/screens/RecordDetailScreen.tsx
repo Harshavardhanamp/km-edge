@@ -22,7 +22,7 @@ import {
   softDeleteRecord,
   updateRecord,
 } from '../lib/db/recordStore';
-import { updateEvent, deleteEvent } from '../lib/calendar';
+import { updateEvent } from '../lib/calendar';
 import { telemetry } from '../lib/telemetry';
 import { useScreenTracking } from '../lib/useScreenTracking';
 import type { EdgeRecord, CaptureKind, RecordType } from '../lib/types';
@@ -124,10 +124,7 @@ export default function RecordDetailScreen({ navigation, route }: Props) {
         text: 'Delete',
         style: 'destructive',
         onPress: async () => {
-          if (hasCalEntry) {
-            try { await deleteEvent(calFields!.native_calendar_event_id!); } catch { /* non-fatal */ }
-          }
-          softDeleteRecord(edge_id);
+          await softDeleteRecord(edge_id);
           telemetry.action('record_delete', { edge_id });
           navigation.goBack();
         },
