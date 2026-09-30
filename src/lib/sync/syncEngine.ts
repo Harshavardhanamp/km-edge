@@ -12,7 +12,7 @@ import {
   resetInFlightToPending,
   type DeltaEntry,
 } from '../db/deltaStore';
-import { fetchWithReauth, authHeaders } from '../gksClient';
+import { fetchWithReauth, authHeaders, healthCheck } from '../gksClient';
 import { get, set, KEYS } from '../secureStore';
 
 export type SyncResult = {
@@ -366,6 +366,12 @@ export async function runSync(): Promise<SyncResult> {
 
   const baseUrl = await get(KEYS.GKS_SERVER_URL);
   if (!baseUrl) return result;
+
+  // Probe GKS before processing any deltas. expo-network only checks device
+  // internet connectivity — it cannot know if the Tailscale tunnel is up.
+  // A failed probe (Tailscale down, server off, timeout) aborts silently;
+  // all deltas stay PENDING and are retried on the next run.
+  if (await healthCheck(baseUrl) === 'offline') return result;
 
   // Reset any IN_FLIGHT from a previous crashed session
   resetInFlightToPending();

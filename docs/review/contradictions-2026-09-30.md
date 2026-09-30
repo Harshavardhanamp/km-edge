@@ -74,7 +74,7 @@
 - Pending attachment retry: ✅ Fixed — `runSync()` now starts with an orphaned-attachment retry pass (query: PENDING attachments for records with gks_id set and not deleted).
 
 Remaining open gaps (not fixed in this session):
-- Background sync over Tailscale: iOS background fetch may fire without VPN up. Behaviour undefined.
+- Background sync over Tailscale: ✅ Fixed — `runSync()` pre-flight now probes `GET /api/v1/health` before processing any delta. Tailscale-down returns 'offline' → silent abort, all deltas stay PENDING. REQ-0012 F1.2 updated (step 3).
 - iOS Keychain accessibility in background: silent re-auth reads SecureStore during background fetch; may block before first unlock.
 - Manual server URL entry: still absent from REQ-0004 / login-screen.md.
 - `preserve_authored_body`: GKS already passes it unconditionally (archive.py); edge sends it redundantly. Harmless but should be verified and documented.

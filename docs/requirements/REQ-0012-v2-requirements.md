@@ -49,7 +49,8 @@ Sync runs:
 Before processing any delta:
 1. Check network connectivity via `expo-network`. No network → abort silently.
 2. Confirm `GKS_SERVER_URL` is set. Missing → abort silently.
-3. Call `resetInFlightToPending()` to recover any deltas stuck IN_FLIGHT from a previous crash.
+3. Probe `GET /api/v1/health` on the GKS server. Offline (failed / non-200) → abort silently. This catches Tailscale tunnel down, server off, or DNS failure — `expo-network` only knows the device has internet, not that the Tailscale VPN path to GKS is up.
+4. Call `resetInFlightToPending()` to recover any deltas stuck IN_FLIGHT from a previous crash.
 
 ### F1.3 Delta Processing Order
 
