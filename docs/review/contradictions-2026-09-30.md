@@ -77,5 +77,5 @@ Remaining open gaps (not fixed in this session):
 - Background sync over Tailscale: ✅ Fixed — `runSync()` pre-flight now probes `GET /api/v1/health` before processing any delta. Tailscale-down returns 'offline' → silent abort, all deltas stay PENDING. REQ-0012 F1.2 updated (step 3).
 - iOS Keychain accessibility in background: ✅ Fixed — `secureStore.ts` now writes/reads `GKS_SERVER_URL`, `GKS_USERNAME`, `GKS_PASSWORD_ENC`, `GKS_USER_ID` with `keychainAccessible: AFTER_FIRST_UNLOCK`. Background fetch can read these after first device unlock. All other keys keep the default `WHEN_UNLOCKED`.
 - Manual server URL entry: ✅ Fixed — REQ-0004 L1.3 added (manual URL entry as third fallback after auto-discovery and QR). ServerDiscoveryScreen gains a `manual` phase with URL input + health-check probe before accepting.
-- `preserve_authored_body`: GKS already passes it unconditionally (archive.py); edge sends it redundantly. Harmless but should be verified and documented.
+- `preserve_authored_body`: ✅ Documented — GKS-API-extensions.md Ext 4 updated. GKS hardcodes `True` internally; edge payload value is ignored but kept defensively. No code change needed.
 - No V2 test plan despite NF2 declaring sync highest-priority NFR.

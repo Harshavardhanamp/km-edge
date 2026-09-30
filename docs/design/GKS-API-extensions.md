@@ -115,7 +115,11 @@ Both creation functions accept `content_sha256: str | None`. If provided, stored
 
 **GKS file:** `knowledge.py` line 86
 
-`create_direct_record` passes `preserve_authored_body=True` unconditionally. Prevents GKS prepending `# Title\n\n` to body, which would corrupt the SHA-256 checksum. No further change needed.
+`create_direct_record` passes `preserve_authored_body=True` unconditionally inside GKS — it does not read the value from the edge payload. The edge also sends `preserve_authored_body: true` in every POST, but this is redundant: GKS ignores the incoming value and hardcodes `True` regardless.
+
+**Why the edge still sends it:** defensive — if a future GKS change makes the field conditional, the edge payload will already carry the correct value. Removing it from the edge payload would be a silent behaviour dependency on GKS internals. Leave as-is.
+
+**Effect:** prevents GKS prepending `# Title\n\n` to the body, which would corrupt the `content_sha256` checksum comparison in `verifyChecksums()`.
 
 ---
 
