@@ -1,0 +1,34 @@
+{
+  "name": "telemetry.batch.ok",
+  "request": {
+    "method": "POST",
+    "path": "/api/v1/edge/telemetry",
+    "headers": {
+      "X-Edge-Contract-Version": "1",
+      "X-Edge-Device-Id": "01927c4a-0000-7000-8000-000000000001",
+      "Authorization": "Bearer test-token-001",
+      "Content-Type": "application/json"
+    },
+    "body": {
+      "events": [
+        {
+          "event_type": "RECORD_VIEWED",
+          "edge_id": "01927c4a-0000-7000-8000-000000000002",
+          "occurred_at": "2026-09-30T09:01:00Z"
+        },
+        {
+          "event_type": "SEARCH_PERFORMED",
+          "query_length": 12,
+          "occurred_at": "2026-09-30T09:02:00Z"
+        }
+      ]
+    }
+  },
+  "response": {
+    "status": 200,
+    "body": {
+      "accepted": 2
+    }
+  },
+  "preconditions": ["authenticated as usr-001"]
+}

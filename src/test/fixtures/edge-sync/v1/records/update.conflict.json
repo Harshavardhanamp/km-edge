@@ -1,0 +1,29 @@
+{
+  "name": "records.update.conflict",
+  "request": {
+    "method": "PUT",
+    "path": "/api/v1/edge/records/01927c4a-0000-7000-8000-000000000002",
+    "headers": {
+      "X-Edge-Contract-Version": "1",
+      "X-Edge-Device-Id": "01927c4a-0000-7000-8000-000000000001",
+      "Authorization": "Bearer test-token-001",
+      "Content-Type": "application/json"
+    },
+    "body": {
+      "content": "Avyu started school today at Vidyashilp in Bangalore — stale update",
+      "content_sha256": "a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2",
+      "base_gks_id": "KNOW-000042",
+      "tags": ["family"]
+    }
+  },
+  "response": {
+    "status": 200,
+    "body": {
+      "state": "CONFLICT",
+      "edge_id": "01927c4a-0000-7000-8000-000000000002",
+      "current_gks_id": "KNOW-000043",
+      "base_gks_id": "KNOW-000042"
+    }
+  },
+  "preconditions": ["record head has advanced to KNOW-000043 but client sent base_gks_id KNOW-000042"]
+}

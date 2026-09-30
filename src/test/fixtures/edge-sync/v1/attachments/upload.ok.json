@@ -1,0 +1,29 @@
+{
+  "name": "attachments.upload.ok",
+  "request": {
+    "method": "POST",
+    "path": "/api/v1/edge/records/01927c4a-0000-7000-8000-000000000002/attachments",
+    "headers": {
+      "X-Edge-Contract-Version": "1",
+      "X-Edge-Device-Id": "01927c4a-0000-7000-8000-000000000001",
+      "Authorization": "Bearer test-token-001"
+    },
+    "multipart": {
+      "fields": {
+        "filename": "school-first-day.jpg",
+        "content_sha256": "a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2",
+        "mime_type": "image/jpeg"
+      },
+      "file_field": "file"
+    }
+  },
+  "response": {
+    "status": 201,
+    "body": {
+      "state": "ACCEPTED",
+      "attachment_id": "att-001",
+      "edge_id": "01927c4a-0000-7000-8000-000000000002"
+    }
+  },
+  "preconditions": ["record 01927c4a-0000-7000-8000-000000000002 exists", "file is a valid JPEG under max_file_bytes"]
+}

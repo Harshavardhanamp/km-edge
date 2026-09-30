@@ -1,0 +1,28 @@
+{
+  "name": "records.update.type-locked",
+  "request": {
+    "method": "PUT",
+    "path": "/api/v1/edge/records/01927c4a-0000-7000-8000-000000000002",
+    "headers": {
+      "X-Edge-Contract-Version": "1",
+      "X-Edge-Device-Id": "01927c4a-0000-7000-8000-000000000001",
+      "Authorization": "Bearer test-token-001",
+      "Content-Type": "application/json"
+    },
+    "body": {
+      "record_type": "NOTE",
+      "content": "Avyu started school today at Vidyashilp in Bangalore",
+      "content_sha256": "a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2",
+      "base_gks_id": "KNOW-000042",
+      "tags": ["family"]
+    }
+  },
+  "response": {
+    "status": 400,
+    "body": {
+      "code": "EDGE_TYPE_LOCKED",
+      "original_type": "JOURNAL"
+    }
+  },
+  "preconditions": ["record was originally created as JOURNAL; record_type may not change after creation"]
+}

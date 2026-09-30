@@ -1,0 +1,21 @@
+{
+  "name": "records.delete.resolved",
+  "request": {
+    "method": "DELETE",
+    "path": "/api/v1/edge/records/01927c4a-0000-7000-8000-000000000002",
+    "headers": {
+      "X-Edge-Contract-Version": "1",
+      "X-Edge-Device-Id": "01927c4a-0000-7000-8000-000000000001",
+      "Authorization": "Bearer test-token-001"
+    }
+  },
+  "response": {
+    "status": 200,
+    "body": {
+      "state": "DELETION_REQUESTED",
+      "edge_id": "01927c4a-0000-7000-8000-000000000002",
+      "gks_id": "KNOW-000042"
+    }
+  },
+  "preconditions": ["record 01927c4a-0000-7000-8000-000000000002 has been resolved to KNOW-000042"]
+}

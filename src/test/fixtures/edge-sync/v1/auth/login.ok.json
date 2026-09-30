@@ -1,0 +1,33 @@
+{
+  "name": "auth.login.ok",
+  "request": {
+    "method": "POST",
+    "path": "/api/v1/edge/auth/login",
+    "headers": {
+      "X-Edge-Contract-Version": "1",
+      "X-Edge-Device-Id": "01927c4a-0000-7000-8000-000000000001",
+      "Content-Type": "application/json"
+    },
+    "body": {
+      "username": "priya",
+      "password": "correct-password-123",
+      "device_name": "Priya's iPhone",
+      "platform": "ios",
+      "app_version": "2.0.0"
+    }
+  },
+  "response": {
+    "status": 200,
+    "body": {
+      "token": "test-token-001",
+      "expires_at": "2056-10-30T09:00:00Z",
+      "user": {
+        "user_id": "usr-001",
+        "username": "priya",
+        "display_name": "Priya",
+        "role": "MEMBER"
+      }
+    }
+  },
+  "preconditions": ["user priya exists with correct-password-123"]
+}

@@ -1,0 +1,26 @@
+{
+  "name": "auth.login.invalid",
+  "request": {
+    "method": "POST",
+    "path": "/api/v1/edge/auth/login",
+    "headers": {
+      "X-Edge-Contract-Version": "1",
+      "X-Edge-Device-Id": "01927c4a-0000-7000-8000-000000000001",
+      "Content-Type": "application/json"
+    },
+    "body": {
+      "username": "priya",
+      "password": "wrong-password-000",
+      "device_name": "Priya's iPhone",
+      "platform": "ios",
+      "app_version": "2.0.0"
+    }
+  },
+  "response": {
+    "status": 401,
+    "body": {
+      "code": "INVALID_LOGIN"
+    }
+  },
+  "preconditions": ["user priya exists"]
+}

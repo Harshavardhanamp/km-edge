@@ -1,0 +1,41 @@
+{
+  "name": "capabilities",
+  "request": {
+    "method": "GET",
+    "path": "/api/v1/edge/capabilities",
+    "headers": {
+      "X-Edge-Contract-Version": "1"
+    }
+  },
+  "response": {
+    "status": 200,
+    "body": {
+      "contract_version": 1,
+      "supported_contract_versions": [1],
+      "server": {
+        "display_name": "Kashyap's Knowledge",
+        "version": "2.1.0",
+        "build_sha": "test"
+      },
+      "attachments": {
+        "allowed_extensions": ["pdf","txt","md","rtf","csv","json","doc","docx","xls","xlsx","ppt","pptx","jpg","jpeg","png","webp","gif","svg","heic","mp4","mov","mp3","m4a"],
+        "max_file_bytes": 104857600,
+        "max_record_total_bytes": 52428800,
+        "max_files_per_record": 10,
+        "scan_policy": "NOT_SCANNED"
+      },
+      "limits": {
+        "max_content_chars": 100000,
+        "max_tags": 20,
+        "max_tag_chars": 64,
+        "max_batch_telemetry_events": 200
+      },
+      "record_types": ["JOURNAL","NOTE","EVENT","DECISION","LESSON","GOAL","PERSON"],
+      "life_areas": ["family","professional","finance","children","social","personal","learning","health","home","travel","legacy"],
+      "session": {
+        "absolute_seconds": 2592000
+      }
+    }
+  },
+  "preconditions": []
+}

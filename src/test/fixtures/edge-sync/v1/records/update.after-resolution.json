@@ -1,0 +1,28 @@
+{
+  "name": "records.update.after-resolution",
+  "request": {
+    "method": "PUT",
+    "path": "/api/v1/edge/records/01927c4a-0000-7000-8000-000000000002",
+    "headers": {
+      "X-Edge-Contract-Version": "1",
+      "X-Edge-Device-Id": "01927c4a-0000-7000-8000-000000000001",
+      "Authorization": "Bearer test-token-001",
+      "Content-Type": "application/json"
+    },
+    "body": {
+      "content": "Avyu started school today at Vidyashilp in Bangalore — updated after resolution",
+      "content_sha256": "a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2",
+      "base_gks_id": "KNOW-000043",
+      "tags": ["family", "children"]
+    }
+  },
+  "response": {
+    "status": 200,
+    "body": {
+      "state": "UPDATED",
+      "edge_id": "01927c4a-0000-7000-8000-000000000002",
+      "gks_id": "KNOW-000043"
+    }
+  },
+  "preconditions": ["record 01927c4a-0000-7000-8000-000000000002 has been resolved to KNOW-000043", "base_gks_id matches current head"]
+}

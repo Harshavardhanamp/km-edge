@@ -1,0 +1,19 @@
+{
+  "name": "auth.session.revoked",
+  "request": {
+    "method": "GET",
+    "path": "/api/v1/edge/auth/me",
+    "headers": {
+      "X-Edge-Contract-Version": "1",
+      "X-Edge-Device-Id": "01927c4a-0000-7000-8000-000000000001",
+      "Authorization": "Bearer revoked-token-001"
+    }
+  },
+  "response": {
+    "status": 401,
+    "body": {
+      "code": "EDGE_SESSION_REVOKED"
+    }
+  },
+  "preconditions": ["token revoked-token-001 exists but has been explicitly revoked"]
+}

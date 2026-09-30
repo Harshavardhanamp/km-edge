@@ -1,0 +1,20 @@
+{
+  "name": "records.delete.replay",
+  "request": {
+    "method": "DELETE",
+    "path": "/api/v1/edge/records/01927c4a-0000-7000-8000-000000000002",
+    "headers": {
+      "X-Edge-Contract-Version": "1",
+      "X-Edge-Device-Id": "01927c4a-0000-7000-8000-000000000001",
+      "Authorization": "Bearer test-token-001"
+    }
+  },
+  "response": {
+    "status": 200,
+    "body": {
+      "state": "DELETED",
+      "edge_id": "01927c4a-0000-7000-8000-000000000002"
+    }
+  },
+  "preconditions": ["record 01927c4a-0000-7000-8000-000000000002 was already deleted — idempotent repeat"]
+}

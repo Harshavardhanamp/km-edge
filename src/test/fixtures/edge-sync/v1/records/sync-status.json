@@ -1,0 +1,26 @@
+{
+  "name": "records.sync-status",
+  "request": {
+    "method": "GET",
+    "path": "/api/v1/edge/sync-status",
+    "headers": {
+      "X-Edge-Contract-Version": "1",
+      "X-Edge-Device-Id": "01927c4a-0000-7000-8000-000000000001",
+      "Authorization": "Bearer test-token-001"
+    }
+  },
+  "response": {
+    "status": 200,
+    "body": {
+      "records": [
+        {
+          "edge_id": "01927c4a-0000-7000-8000-000000000002",
+          "gks_id": "KNOW-000042",
+          "state": "RESOLVED",
+          "updated_at": "2026-09-30T09:00:00Z"
+        }
+      ]
+    }
+  },
+  "preconditions": ["authenticated as usr-001", "at least one record synced by this device"]
+}

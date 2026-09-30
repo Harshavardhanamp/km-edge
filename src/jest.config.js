@@ -15,11 +15,14 @@ module.exports = {
     '^expo-sqlite$': '<rootDir>/__mocks__/expo-sqlite.ts',
     '^expo-file-system$': '<rootDir>/__mocks__/expo-file-system.ts',
     '^expo-calendar$': '<rootDir>/__mocks__/expo-calendar.ts',
+    '^expo-secure-store$': '<rootDir>/__mocks__/expo-secure-store.ts',
+    '^expo-network$': '<rootDir>/__mocks__/expo-network.ts',
+    '^expo-crypto$': '<rootDir>/__mocks__/expo-crypto.ts',
     // calendar module is imported as a relative path from recordStore
     '^\\.\\./calendar$': '<rootDir>/__mocks__/calendar.ts',
     '^\\./calendar$': '<rootDir>/__mocks__/calendar.ts',
   },
   transformIgnorePatterns: [
-    'node_modules/(?!(expo-sqlite|expo-file-system|expo-calendar)/)',
+    'node_modules/(?!(expo-sqlite|expo-file-system|expo-calendar|expo-secure-store|expo-network|expo-crypto)/)',
   ],
 };

@@ -1,0 +1,27 @@
+{
+  "name": "attachments.upload.checksum",
+  "request": {
+    "method": "POST",
+    "path": "/api/v1/edge/records/01927c4a-0000-7000-8000-000000000002/attachments",
+    "headers": {
+      "X-Edge-Contract-Version": "1",
+      "X-Edge-Device-Id": "01927c4a-0000-7000-8000-000000000001",
+      "Authorization": "Bearer test-token-001"
+    },
+    "multipart": {
+      "fields": {
+        "filename": "school-first-day.jpg",
+        "content_sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+        "mime_type": "image/jpeg"
+      },
+      "file_field": "file"
+    }
+  },
+  "response": {
+    "status": 400,
+    "body": {
+      "code": "EDGE_CHECKSUM_MISMATCH"
+    }
+  },
+  "preconditions": ["content_sha256 field does not match sha256 of the uploaded file bytes"]
+}

@@ -1,0 +1,29 @@
+{
+  "name": "records.create.checksum-mismatch",
+  "request": {
+    "method": "POST",
+    "path": "/api/v1/edge/records",
+    "headers": {
+      "X-Edge-Contract-Version": "1",
+      "X-Edge-Device-Id": "01927c4a-0000-7000-8000-000000000001",
+      "Authorization": "Bearer test-token-001",
+      "Content-Type": "application/json"
+    },
+    "body": {
+      "edge_id": "01927c4a-0000-7000-8000-000000000002",
+      "record_type": "JOURNAL",
+      "content": "Avyu started school today at Vidyashilp in Bangalore",
+      "content_sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+      "captured_at": "2026-09-30T09:00:00Z",
+      "tags": ["family"],
+      "classification": "HOUSEHOLD"
+    }
+  },
+  "response": {
+    "status": 400,
+    "body": {
+      "code": "EDGE_CHECKSUM_MISMATCH"
+    }
+  },
+  "preconditions": ["content_sha256 does not match sha256(content)"]
+}
