@@ -1,9 +1,11 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
+  Alert,
   FlatList,
   StyleSheet,
   Text,
+  TextInput,
   TouchableOpacity,
   View,
 } from 'react-native';
@@ -70,8 +72,9 @@ async function probeSubnet(): Promise<ProbeResult[]> {
 }
 
 export default function ServerDiscoveryScreen({ navigation }: Props) {
-  const [phase, setPhase] = useState<'scanning' | 'results' | 'qr' | 'error'>('scanning');
+  const [phase, setPhase] = useState<'scanning' | 'results' | 'qr' | 'manual' | 'error'>('scanning');
   const [servers, setServers] = useState<ProbeResult[]>([]);
+  const [manualUrl, setManualUrl] = useState('');
   const [permission, requestPermission] = useCameraPermissions();
 
   const scan = useCallback(async () => {
@@ -119,6 +122,46 @@ export default function ServerDiscoveryScreen({ navigation }: Props) {
           }}
         >
           <Text style={[styles.btnText, styles.btnTextSecondary]}>Scan QR code instead</Text>
+        </TouchableOpacity>
+        <TouchableOpacity onPress={() => setPhase('manual')}>
+          <Text style={[styles.hint, { color: colors.accent, marginTop: 8 }]}>Enter URL manually</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
+
+  if (phase === 'manual') {
+    return (
+      <View style={styles.center}>
+        <Text style={styles.title}>GKS Server URL</Text>
+        <Text style={styles.hint}>Enter the full URL including port, e.g. http://100.x.x.x:8000</Text>
+        <TextInput
+          style={styles.urlInput}
+          value={manualUrl}
+          onChangeText={setManualUrl}
+          placeholder="http://100.x.x.x:8000"
+          placeholderTextColor="#B0A090"
+          autoCapitalize="none"
+          autoCorrect={false}
+          keyboardType="url"
+        />
+        <TouchableOpacity
+          style={styles.btn}
+          onPress={async () => {
+            const url = manualUrl.trim();
+            if (!url) return;
+            const state = await healthCheck(url);
+            if (state === 'online') {
+              await confirmServer({ url, hostname: new URL(url).hostname });
+            } else {
+              Alert.alert('Cannot reach server', 'Check the URL and make sure Tailscale is connected.');
+            }
+          }}
+        >
+          <Text style={styles.btnText}>Connect</Text>
+        </TouchableOpacity>
+        <TouchableOpacity onPress={() => setPhase('error')}>
+          <Text style={[styles.hint, { color: colors.accent, marginTop: 8 }]}>Cancel</Text>
         </TouchableOpacity>
       </View>
     );
@@ -195,6 +238,17 @@ const styles = StyleSheet.create({
   btnSecondary: { backgroundColor: 'transparent', borderWidth: 1, borderColor: colors.accent },
   btnText: { color: '#FFF', fontWeight: '600', fontSize: 16 },
   btnTextSecondary: { color: colors.accent },
+  urlInput: {
+    width: '100%',
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 8,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    fontSize: 14,
+    color: colors.text,
+    backgroundColor: '#FFF',
+  },
   serverRow: {
     padding: 16,
     borderBottomWidth: 1,

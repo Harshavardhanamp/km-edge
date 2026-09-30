@@ -29,10 +29,17 @@ Before login is possible, the app must know where the user's GKS instance lives.
 - QR encodes the GKS URL (and optionally any required config)
 - User scans it with the device camera; app extracts and stores the URL
 
-### L1.3 Stored server address
-- Once a GKS URL is confirmed (via either method), it is stored persistently in device secure storage
+### L1.3 Fallback: Manual URL Entry
+- If QR code is also unavailable, offer "Enter URL manually" link on the error screen
+- User types the full GKS URL including port (e.g. `http://100.x.x.x:8000`)
+- App probes `GET /api/v1/health` on the entered URL before accepting it
+- If unreachable: inline error "Cannot reach server — check URL and Tailscale"
+- If reachable: store URL and proceed to login
+
+### L1.4 Stored server address
+- Once a GKS URL is confirmed (via any method), it is stored persistently in device secure storage
 - On subsequent launches, the stored URL is used directly — no re-discovery needed
-- User can change it from Settings if needed
+- User can change it from Settings → "Re-discover server"
 
 ---
 
