@@ -16,6 +16,7 @@ function sha256File(filePath: string): string {
 test('fixture files match MANIFEST.sha256', () => {
   const manifest = fs.readFileSync(MANIFEST, 'utf8')
     .split('\n')
+    .map(l => l.trim())
     .filter(Boolean)
     .map(line => {
       const [hash, ...rest] = line.split('  ');
@@ -36,6 +37,7 @@ test('no fixture files missing from MANIFEST.sha256', () => {
   const manifestFiles = new Set(
     fs.readFileSync(MANIFEST, 'utf8')
       .split('\n')
+      .map(l => l.trim())
       .filter(Boolean)
       .map(line => line.split('  ').slice(1).join('  '))
   );

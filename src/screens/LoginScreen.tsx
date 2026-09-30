@@ -1,16 +1,17 @@
 import React, { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
-  Linking,
+  Platform,
   StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
   View,
 } from 'react-native';
+import Constants from 'expo-constants';
 import { deriveVerifier, generateSalt, verifyPassword } from '../lib/auth';
-import { healthCheck, login } from '../lib/gksClient';
-import { KEYS, get, set } from '../lib/secureStore';
+import { login as gksLogin } from '../lib/gksClient';
+import { KEYS, ensureDeviceId, get, set } from '../lib/secureStore';
 import { useAuth } from '../context/AuthContext';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { AuthStackParamList } from '../navigation/AuthStack';
@@ -19,35 +20,35 @@ type Props = NativeStackScreenProps<AuthStackParamList, 'Login'>;
 
 export default function LoginScreen({ navigation, route }: Props) {
   const { login: authLogin } = useAuth();
-  const [username, setUsername] = useState('');
+  const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [deviceName, setDeviceName] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(
     (route.params as { message?: string } | undefined)?.message ?? null
   );
   const [gksUrl, setGksUrl] = useState<string | null>(null);
-  const [gksOnline, setGksOnline] = useState(false);
   const [hasOfflineVerifier, setHasOfflineVerifier] = useState(false);
+  const [showOffline, setShowOffline] = useState(false);
   const passwordRef = useRef<TextInput>(null);
 
   useEffect(() => {
-    async function probe() {
+    async function init() {
       const url = await get(KEYS.GKS_SERVER_URL);
-      const verifier = await get(KEYS.OFFLINE_VERIFIER);
       setGksUrl(url);
+      const verifier = await get(KEYS.OFFLINE_VERIFIER);
       setHasOfflineVerifier(!!verifier);
-      if (url) {
-        const state = await healthCheck(url);
-        setGksOnline(state === 'online');
-      }
+      const stored = await get(KEYS.DEVICE_NAME);
+      setDeviceName(stored ?? (Constants.deviceName ?? `${Platform.OS} device`));
+      await ensureDeviceId();
     }
-    probe();
+    init();
   }, []);
 
   async function handleLogin() {
-    if (!username.trim() || !password) {
-      setError('Enter username and password');
+    if (!identifier.trim() || !password) {
+      setError('Enter your username and password');
       return;
     }
     if (!gksUrl) {
@@ -57,17 +58,37 @@ export default function LoginScreen({ navigation, route }: Props) {
     setLoading(true);
     setError(null);
 
-    const result = await login(gksUrl, username.trim(), password);
+    const appVersion = (Constants.expoConfig?.version ?? '2.0.0') as string;
+    const platform = Platform.OS === 'ios' ? 'ios' : 'android';
+    const name = deviceName.trim() || `${platform} device`;
+
+    const result = await gksLogin({
+      baseUrl: gksUrl,
+      identifier: identifier.trim(),
+      password,
+      deviceName: name,
+      platform,
+      appVersion,
+    });
+
     if (!result.ok) {
       setLoading(false);
-      setError(result.error);
+      if ('network' in result) {
+        setError('Network error — check your connection');
+      } else {
+        setError(result.error.message || 'Login failed');
+      }
       return;
     }
 
-    // Store credentials for silent re-auth and offline verifier
-    await set(KEYS.GKS_USERNAME, username.trim());
-    await set(KEYS.GKS_USER_ID, result.userId);
-    await set(KEYS.GKS_PASSWORD_ENC, password);
+    const { token, expires_at, user } = result.body;
+
+    // Store token and session info; never store password
+    await set(KEYS.EDGE_TOKEN, token);
+    await set(KEYS.EDGE_TOKEN_EXPIRES_AT, expires_at);
+    await set(KEYS.GKS_USERNAME, user.username);
+    await set(KEYS.GKS_USER_ID, user.user_id);
+    await set(KEYS.DEVICE_NAME, name);
 
     // Refresh offline verifier
     const salt = await generateSalt();
@@ -77,7 +98,7 @@ export default function LoginScreen({ navigation, route }: Props) {
     await set(KEYS.OFFLINE_ATTEMPT_COUNT, '0');
 
     setLoading(false);
-    authLogin({ userId: result.userId });
+    authLogin({ userId: user.user_id, displayName: user.display_name });
   }
 
   async function handleOfflineLogin() {
@@ -104,8 +125,8 @@ export default function LoginScreen({ navigation, route }: Props) {
 
     if (ok) {
       await set(KEYS.OFFLINE_ATTEMPT_COUNT, '0');
-      const storedUsername = await get(KEYS.GKS_USERNAME);
-      authLogin({ userId: storedUsername ?? '', offline: true });
+      const storedUserId = await get(KEYS.GKS_USER_ID) ?? '';
+      authLogin({ userId: storedUserId, offline: true });
     } else {
       const next = attempts + 1;
       await set(KEYS.OFFLINE_ATTEMPT_COUNT, String(next));
@@ -117,8 +138,6 @@ export default function LoginScreen({ navigation, route }: Props) {
     }
   }
 
-  const showOfflineOption = !gksOnline && hasOfflineVerifier;
-
   return (
     <View style={styles.container}>
       <View style={styles.header}>
@@ -128,72 +147,94 @@ export default function LoginScreen({ navigation, route }: Props) {
 
       {error && <Text style={styles.error}>{error}</Text>}
 
-      <TextInput
-        style={styles.input}
-        placeholder="Username or email"
-        placeholderTextColor="#A09080"
-        autoCapitalize="none"
-        autoCorrect={false}
-        value={username}
-        onChangeText={setUsername}
-        returnKeyType="next"
-        onSubmitEditing={() => passwordRef.current?.focus()}
-      />
-
-      <View style={styles.passwordRow}>
-        <TextInput
-          ref={passwordRef}
-          style={[styles.input, styles.passwordInput]}
-          placeholder="Password"
-          placeholderTextColor="#A09080"
-          secureTextEntry={!showPassword}
-          value={password}
-          onChangeText={setPassword}
-          returnKeyType="done"
-          onSubmitEditing={gksOnline ? handleLogin : undefined}
-        />
-        <TouchableOpacity
-          style={styles.eyeBtn}
-          onPress={() => setShowPassword((v) => !v)}
-          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-        >
-          <Text style={styles.eyeIcon}>{showPassword ? '🙈' : '👁'}</Text>
-        </TouchableOpacity>
-      </View>
-
-      <TouchableOpacity
-        style={[styles.btn, (loading || !gksOnline) && styles.btnDisabled]}
-        onPress={handleLogin}
-        disabled={loading || !gksOnline}
-      >
-        {loading ? (
-          <ActivityIndicator color="#FFF" />
-        ) : (
-          <Text style={styles.btnText}>Log in</Text>
-        )}
-      </TouchableOpacity>
-
-      <TouchableOpacity
-        onPress={() => gksUrl && Linking.openURL(`${gksUrl}/forgot-password`)}
-        disabled={!gksUrl}
-      >
-        <Text style={styles.link}>Forgot password?</Text>
-      </TouchableOpacity>
-
-      {showOfflineOption && (
+      {!showOffline ? (
         <>
-          <View style={styles.divider}>
-            <View style={styles.dividerLine} />
-            <Text style={styles.dividerText}>or</Text>
-            <View style={styles.dividerLine} />
+          <TextInput
+            style={styles.input}
+            placeholder="Username or email"
+            placeholderTextColor="#A09080"
+            autoCapitalize="none"
+            autoCorrect={false}
+            value={identifier}
+            onChangeText={setIdentifier}
+            returnKeyType="next"
+            onSubmitEditing={() => passwordRef.current?.focus()}
+          />
+
+          <View style={styles.passwordRow}>
+            <TextInput
+              ref={passwordRef}
+              style={[styles.input, styles.passwordInput]}
+              placeholder="Password"
+              placeholderTextColor="#A09080"
+              secureTextEntry={!showPassword}
+              value={password}
+              onChangeText={setPassword}
+              returnKeyType="done"
+              onSubmitEditing={handleLogin}
+            />
+            <TouchableOpacity
+              style={styles.eyeBtn}
+              onPress={() => setShowPassword((v) => !v)}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            >
+              <Text style={styles.eyeIcon}>{showPassword ? '🙈' : '👁'}</Text>
+            </TouchableOpacity>
           </View>
 
           <TouchableOpacity
-            style={styles.btnSecondary}
+            style={[styles.btn, loading && styles.btnDisabled]}
+            onPress={handleLogin}
+            disabled={loading}
+          >
+            {loading ? (
+              <ActivityIndicator color="#FFF" />
+            ) : (
+              <Text style={styles.btnText}>Log in</Text>
+            )}
+          </TouchableOpacity>
+
+          {hasOfflineVerifier && (
+            <TouchableOpacity onPress={() => { setShowOffline(true); setError(null); }}>
+              <Text style={styles.link}>Continue offline instead</Text>
+            </TouchableOpacity>
+          )}
+        </>
+      ) : (
+        <>
+          <Text style={styles.offlineNote}>Enter your password to unlock offline access.</Text>
+
+          <View style={styles.passwordRow}>
+            <TextInput
+              ref={passwordRef}
+              style={[styles.input, styles.passwordInput]}
+              placeholder="Password"
+              placeholderTextColor="#A09080"
+              secureTextEntry={!showPassword}
+              value={password}
+              onChangeText={setPassword}
+              returnKeyType="done"
+              onSubmitEditing={handleOfflineLogin}
+            />
+            <TouchableOpacity
+              style={styles.eyeBtn}
+              onPress={() => setShowPassword((v) => !v)}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            >
+              <Text style={styles.eyeIcon}>{showPassword ? '🙈' : '👁'}</Text>
+            </TouchableOpacity>
+          </View>
+
+          <TouchableOpacity
+            style={[styles.btn, loading && styles.btnDisabled]}
             onPress={handleOfflineLogin}
             disabled={loading}
           >
-            <Text style={styles.btnSecondaryText}>Continue offline</Text>
+            {loading ? <ActivityIndicator color="#FFF" /> : <Text style={styles.btnText}>Continue offline</Text>}
+          </TouchableOpacity>
+
+          <TouchableOpacity onPress={() => { setShowOffline(false); setError(null); }}>
+            <Text style={styles.link}>Back to sign in</Text>
           </TouchableOpacity>
         </>
       )}
@@ -201,12 +242,7 @@ export default function LoginScreen({ navigation, route }: Props) {
   );
 }
 
-const colors = {
-  bg: '#FDF8F4',
-  accent: '#C17A3A',
-  text: '#2D2016',
-  border: '#E0D0C0',
-};
+const colors = { bg: '#FDF8F4', accent: '#C17A3A', text: '#2D2016', border: '#E0D0C0' };
 
 const styles = StyleSheet.create({
   container: {
@@ -226,6 +262,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     fontSize: 14,
   },
+  offlineNote: { fontSize: 14, color: '#7A6A5A', textAlign: 'center' },
   input: {
     borderWidth: 1,
     borderColor: colors.border,
@@ -249,20 +286,4 @@ const styles = StyleSheet.create({
   btnDisabled: { opacity: 0.5 },
   btnText: { color: '#FFF', fontWeight: '600', fontSize: 16 },
   link: { color: colors.accent, textAlign: 'center', fontSize: 14 },
-  divider: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    marginVertical: 4,
-  },
-  dividerLine: { flex: 1, height: 1, backgroundColor: colors.border },
-  dividerText: { color: '#7A6A5A', fontSize: 13 },
-  btnSecondary: {
-    borderWidth: 1,
-    borderColor: colors.accent,
-    borderRadius: 8,
-    paddingVertical: 14,
-    alignItems: 'center',
-  },
-  btnSecondaryText: { color: colors.accent, fontWeight: '600', fontSize: 16 },
 });

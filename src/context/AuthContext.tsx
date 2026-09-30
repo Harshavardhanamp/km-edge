@@ -1,14 +1,17 @@
 import React, { createContext, useCallback, useContext, useEffect, useState } from 'react';
 import { KEYS, clearSession, get, set } from '../lib/secureStore';
+import { onSessionInvalid } from '../lib/gksClient';
 
 interface AuthSession {
   userId: string;
+  displayName?: string;
   offline?: boolean;
 }
 
 interface AuthContextValue {
   sessionValid: boolean;
   userId: string;
+  displayName: string;
   offline: boolean;
   login: (session: AuthSession) => void;
   logout: () => Promise<void>;
@@ -22,19 +25,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     async function restore() {
-      const userId = await get(KEYS.GKS_USERNAME);
+      const userId = await get(KEYS.GKS_USER_ID);
+      const token = await get(KEYS.EDGE_TOKEN);
       const verifier = await get(KEYS.OFFLINE_VERIFIER);
-      if (userId && verifier) {
-        // Credentials exist — treat as valid session; gksProbe will refine online/offline
-        setSession({ userId });
+      if (userId && (token || verifier)) {
+        const username = await get(KEYS.GKS_USERNAME);
+        setSession({ userId, displayName: username ?? userId });
       }
       setLoaded(true);
     }
     restore();
   }, []);
 
+  useEffect(() => {
+    return onSessionInvalid(async () => {
+      await clearSession();
+      setSession(null);
+    });
+  }, []);
+
   const login = useCallback((s: AuthSession) => {
-    set(KEYS.GKS_USERNAME, s.userId);
+    if (s.displayName) set(KEYS.GKS_USERNAME, s.displayName);
     setSession(s);
   }, []);
 
@@ -50,6 +61,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       value={{
         sessionValid: !!session,
         userId: session?.userId ?? '',
+        displayName: session?.displayName ?? session?.userId ?? '',
         offline: session?.offline ?? false,
         login,
         logout,
