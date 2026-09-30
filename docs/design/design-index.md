@@ -20,3 +20,11 @@
 | [implementation-plan-navigation](implementation-plan-navigation.md) | 10-step integration plan — runs last, after all screens exist | Approved | — |
 | [login-screen](login-screen.md) | Login flow, server discovery, offline auth, lockout, storage gate | Frozen | ADR-0003, ADR-0004 |
 | [implementation-plan-login](implementation-plan-login.md) | 10-step implementation plan for login screen — approved | Approved | ADR-0007, ADR-0008 |
+| [v2-sync-engine](v2-sync-engine.md) | V2 sync engine (original) — §5 mapping and gaps 1–3, 8, 10–11 superseded | Amended by contract alignment | ADR-0005, ADR-0014 |
+| [v2-attachment-sync](v2-attachment-sync.md) | V2 attachment sync — §4 upload protocol superseded; staging/purge kept | Amended | ADR-0009 |
+| [v2-sync-status](v2-sync-status.md) | V2 sync status — §5–6 superseded | Amended | — |
+| [v2-deep-linking](v2-deep-linking.md) | `kmedge://record` deep link; `kmedge://connect` added | Frozen (+ADR-0015) | — |
+| [v2-sync-contract-alignment](v2-sync-contract-alignment.md) | **Current sync design** — client, envelope, engine, telemetry, screens, tests | Frozen | ADR-0011–0015 |
+| [implementation-plan-v2-contract-alignment](implementation-plan-v2-contract-alignment.md) | K0–K7 packets to reach 2.0.0 | Approved | — |
+| [GKS-API-extensions](GKS-API-extensions.md) | Superseded by GKS-owned `KK-EDGE-SYNC-CONTRACT-V1.md` | Superseded | ADR-0011 |
+| [observability](observability.md) | Superseded by ADR-0013 (sync health only) | Superseded | ADR-0013 |
