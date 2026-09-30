@@ -111,17 +111,20 @@ runSync()
                          │                     │
                          ▼                     │
                      PENDING ─────────────► IN_FLIGHT
-                      ▲  ▲                  │       │
-                      │  │                  │       │
-         500 / net    │  │ checksum mismatch │       │
-         error        │  │ retry_count < 3   │       │
-                      │  └───────────────────┘       │
-                      │                              │
-                      │             201 / 409 / 404  │
-                      │                              ▼
-                      │                      ACKNOWLEDGED
+                      ▲  ▲  ▲               │       │
+                      │  │  │               │       │
+         500 / net    │  │  │ auth fail     │       │
+         error        │  │  └───────────────┘       │
+                      │  │                          │
+                      │  │         201 / 409 / 404  │
+                      │  │                          ▼
+                      │  │                  ACKNOWLEDGED
+                      │  │                       │
+                      │  │  checksum mismatch     │
+                      │  └────────────────────────┘
+                      │    retry_count < 3
                       │
-                      │    400 / 422 / auth fail / retry_count >= 3
+                      │    400 / 422 / retry_count >= 3 (checksum)
                       └──────────────────── REJECTED
 ```
 
@@ -132,8 +135,9 @@ runSync()
 | PENDING → IN_FLIGHT | `markInFlight(seq)` called before any network call | `delta_log.status = 'IN_FLIGHT'` |
 | IN_FLIGHT → ACKNOWLEDGED | 201 or 409 from GKS, or DELETE 204/404 | `status = 'ACKNOWLEDGED'`, `gks_record_id`, `gks_acknowledged_at` |
 | IN_FLIGHT → PENDING | 500, network error, or checksum mismatch (retry_count < 3) | `status = 'PENDING'` |
-| IN_FLIGHT → REJECTED | 400/422, auth failure after re-auth, or checksum mismatch with retry_count >= 3 | `status = 'REJECTED'`, `gks_error`, `retry_count` incremented |
-| REJECTED → PENDING | User taps "Retry" in StatusDetailScreen | `status = 'PENDING'`, `gks_error = NULL` |
+| IN_FLIGHT → REJECTED | 400/422, or checksum mismatch with retry_count >= 3 | `status = 'REJECTED'`, `gks_error`, `retry_count` incremented |
+| IN_FLIGHT → PENDING (auth fail) | Auth failure after re-auth — delta is reset, not rejected; sync stops | `status = 'PENDING'` |
+| REJECTED → PENDING | User taps "Retry" in StatusDetailScreen | `status = 'PENDING'`, `gks_error = NULL`, `retry_count = 0` (fresh window) |
 
 **Crash recovery:** On app start, `resetInFlightToPending()` moves any IN_FLIGHT row back to PENDING. This is called unconditionally before the first sync run. There is no data loss: `markInFlight` is written before the network call, so the delta is always in a recoverable state.
 
@@ -241,14 +245,14 @@ Verification is deferred to the end of the sync run rather than performed immedi
 |---|---|
 | Green (idle, online) | GKS reachable, no rejected deltas, sync not running |
 | Pulsing (syncing) | `runSync()` is actively executing |
-| Amber (warning) | One or more deltas in REJECTED state |
+| Amber (warning) | One or more deltas in REJECTED state, sync not running |
 | Red (offline) | GKS unreachable (health probe failed) |
 
-Amber takes precedence over green. Offline takes precedence over all others while network is down.
+**Precedence (highest first):** Red (offline) → Pulsing (syncing) → Amber (rejected deltas) → Green. A sync run that starts while there are rejected deltas shows pulsing, not amber. When the run completes and rejected deltas still exist, it returns to amber.
 
 ### 7.2 `last_synced_at` Storage
 
-- Written to SecureStore (`KEYS.LAST_SYNCED_AT`) at the end of every sync run that completes without aborting due to network loss.
+- Written to SecureStore (`KEYS.LAST_SYNCED_AT`) at the end of every sync run, unconditionally after `verifyChecksums()` returns. Written even if the verification call failed — the timestamp reflects sync completion, not verification success.
 - Read by HomeScreen to display "Last synced X min ago" or "Never synced".
 - Also stored: `gks_synced_count` (count of ACKNOWLEDGED deltas in the current run) for the HomeScreen GKS status row.
 - HomeScreen calls `getRecentRecords()` after sync completes to refresh the record list.

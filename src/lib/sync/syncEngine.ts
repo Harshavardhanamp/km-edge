@@ -177,6 +177,22 @@ async function syncDelta(baseUrl: string, delta: DeltaEntry): Promise<'ok' | 'fa
     return 'fail';
   }
 
+  // C7 fix: if the record was soft-deleted, any earlier PENDING CREATE/UPDATE
+  // deltas must not be transmitted — they would ghost-create a record the user
+  // already deleted. Acknowledge them locally so they clear the queue silently.
+  const isDeleted = db.getFirstSync<{ n: number }>(
+    `SELECT COUNT(*) AS n FROM records WHERE edge_id = ? AND is_deleted = 1`,
+    delta.edge_id
+  );
+  if (isDeleted?.n) {
+    // Use the stamped gks_record_id if available (record was synced before delete)
+    const gksId = db.getFirstSync<{ gks_id: string | null }>(
+      `SELECT gks_id FROM records WHERE edge_id = ?`, delta.edge_id
+    )?.gks_id ?? '';
+    acknowledgeDelta(delta.seq, gksId);
+    return 'ok';
+  }
+
   const record = getRecord(delta.edge_id);
   if (!record) {
     rejectDelta(delta.seq, 'Record not found locally');
@@ -316,7 +332,8 @@ async function verifyChecksums(baseUrl: string): Promise<void> {
       `SELECT r.content_sha256, d.seq, COALESCE(d.retry_count, 0) AS retry_count
        FROM records r
        JOIN delta_log d ON d.edge_id = r.edge_id AND d.status = 'ACKNOWLEDGED'
-       WHERE r.edge_id = ?`,
+       WHERE r.edge_id = ?
+       ORDER BY d.seq DESC LIMIT 1`,
       gksRec.edge_id
     );
 

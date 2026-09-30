@@ -231,12 +231,12 @@ After the sync status call completes (regardless of whether any mismatches were 
 
 ```typescript
 await set(KEYS.LAST_SYNCED_AT, new Date().toISOString());
-await set(KEYS.GKS_SYNCED_COUNT, String(gksRecords.length));
+await set(KEYS.GKS_SYNCED_COUNT, String(result.synced)); // count acknowledged this run, not total on GKS
 ```
 
 `KEYS.LAST_SYNCED_AT` and `KEYS.GKS_SYNCED_COUNT` are new entries in the `KEYS` constant in `src/lib/secureStore.ts`.
 
-These writes happen at the end of a successful sync status call. If the sync status call itself fails (network error, 401), they are not written — the previous values remain. This avoids stamping a "last synced" time that does not correspond to a completed verification.
+These writes happen unconditionally at the end of every `runSync()` call, after `verifyChecksums()` returns (whether or not the status call itself succeeded). The timestamp reflects when the sync run completed, not whether verification passed — a failed status call is not treated as a sync failure.
 
 ---
 
@@ -368,7 +368,7 @@ async function handleRetry(seq: number) {
 }
 ```
 
-Resetting `retry_count = 0` on manual retry gives the record a fresh three-attempt window. This is the intended UX: the user has acknowledged the failure and is asking for a clean retry.
+Resetting `retry_count = 0` on manual retry gives the record a fresh three-attempt window. This is the intended UX: the user has acknowledged the failure and is explicitly asking for a clean retry. `resetDeltaToPending()` (used by automatic checksum-mismatch retries) increments `retry_count`; the manual Retry handler resets it to 0 — these are two distinct code paths with intentionally different semantics.
 
 ---
 

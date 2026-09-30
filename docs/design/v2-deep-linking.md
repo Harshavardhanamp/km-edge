@@ -48,10 +48,10 @@ The warm start path handles a URL arriving while the app is already running.
 1. On mount, `RootNavigator` calls `Linking.addEventListener('url', handleUrl)`. The listener is removed on unmount.
 2. The OS delivers the URL string to `handleUrl`.
 3. `handleUrl` calls `parseRecordUrl(url)` which returns `edge_id` if the path matches `kmedge://record/<uuid>`, or `null` for any other path.
-4. If `edge_id` is null: navigate to `HomeScreen`. Done.
+4. If `edge_id` is null: navigate to `HomeTab` via the root nav ref. Done.
 5. If `edge_id` is present: call `getRecord(edge_id)` against the local SQLite `records` table (synchronous `db.getFirstSync`).
-6. If the record is found: call `navigation.navigate('RecordDetail', { edge_id })` on the root navigation ref. The screen is pushed onto the current stack — the user can back-navigate to wherever they were.
-7. If the record is not found: show a toast "Record not found" and navigate to HomeScreen.
+6. If the record is found: navigate to `HomeTab` first, then push `RecordDetail` into the HomeStack. `RecordDetail` is nested inside `HomeStack` — it cannot be targeted from the root navigator directly. Use `navigationRef.current?.navigate('HomeTab', { screen: 'RecordDetail', params: { edge_id } })`.
+7. If the record is not found: show an `Alert.alert('Record not found')` and navigate to `HomeTab`. There is no toast component in the app; `Alert` is the correct substitute.
 
 The navigation ref (`navigationRef`) is already the standard pattern for navigating outside React components. `RootNavigator` holds this ref and passes it to `NavigationContainer`.
 
@@ -78,8 +78,8 @@ The cold start path handles a URL arriving when the app is not running. The OS l
 
 If `getRecord(edge_id)` returns null or undefined:
 
-- Show a toast: `"Record not found"`
-- Navigate to HomeScreen
+- Show `Alert.alert('Record not found')` — no toast component exists in the app
+- Navigate to `HomeTab`
 
 No sync is triggered. V2 is push-only — there is no mechanism to fetch a record from GKS that is not already present locally. This is specified in REQ-0012 F5.5 and is an intentional constraint, not a gap.
 
@@ -122,14 +122,19 @@ function parseRecordUrl(url: string): string | null {
 
 ```typescript
 import { getRecord } from '../lib/db/recordStore';
+import { Alert } from 'react-native';
 // ...
 const record = getRecord(edge_id); // synchronous, returns EdgeRecord | null
 if (!record) {
-  showToast('Record not found');
-  navigationRef.current?.navigate('HomeScreen');
+  Alert.alert('Record not found');
+  navigationRef.current?.navigate('HomeTab');
   return;
 }
-navigationRef.current?.navigate('RecordDetail', { edge_id });
+// RecordDetail lives inside HomeStack — navigate via nested params
+navigationRef.current?.navigate('HomeTab', {
+  screen: 'RecordDetail',
+  params: { edge_id },
+});
 ```
 
 `getRecord` is a thin `db.getFirstSync` query that already exists in `recordStore.ts` for `RecordDetailScreen`. No new database function required.

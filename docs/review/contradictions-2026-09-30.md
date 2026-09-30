@@ -2,7 +2,7 @@
 
 **Author:** Code review (automated)  
 **Scope:** All 46 documents + migrations, recordStore, attachmentStore, syncEngine, validate.ts, StatusDot, app.json  
-**Status:** A1–A4 fixed in code and docs. A5/A6 noted (no code change needed). B8 fixed in docs. B1–B7, B9–B12, C1–C10, D, E: open, deferred.
+**Status:** A1–A4 fixed in code and docs. A5/A6 noted (no code change needed). B8 fixed in docs. C1–C10 fixed (C6/C7 in code; C1–C5/C8–C10 in docs). B1–B7, B9–B12, D, E: open, deferred.
 
 ---
 
@@ -46,20 +46,20 @@
 
 ---
 
-## C. Contradictions inside V2 documents (all open)
+## C. Contradictions inside V2 documents (all fixed)
 
-| # | Finding |
-|---|---|
-| C1 | Auth failure outcome: v2-sync-engine.md §3 table says REJECTED; §4 and Gap 4 say stop + session_expired (do not reject). |
-| C2 | Checksum mismatch source state: verification acts on ACKNOWLEDGED deltas but state machine shows mismatch arrow leaving IN_FLIGHT. |
-| C3 | `retry_count` on manual Retry: plan Step 2 increments it; sync-status §8 resets to 0; sync-engine §3 silent. |
-| C4 | `gks_synced_count` meaning: sync-engine §7.2 = count this run; sync-status §6 = total on GKS. |
-| C5 | When `last_synced_at` written: three different conditions across REQ-0012 F1.8, sync-engine §7.2, sync-status §6. |
-| C6 | `verifyChecksums()` uses `getFirstSync` on LEFT JOIN to ACKNOWLEDGED deltas — arbitrary result when a record has CREATE + n UPDATEs. |
-| C7 | DELETE of a never-synced record with pending CREATE/UPDATE deltas still in the queue: those will POST to GKS and create a record the user deleted. No "skip earlier deltas for this edge_id" logic. |
-| C8 | StatusDot precedence: "pulsing/syncing" vs "amber" undefined. Code renders syncing as green. |
-| C9 | Deep-link navigation targets `RecordDetail` at root navigator level; RecordDetailScreen exists only inside tab stacks. Toast component referenced but does not exist. |
-| C10 | v2-attachment-sync.md header "Depends on: migration 001, migration 002" while 001 already contains the full V1 schema. |
+| # | Finding | Fix |
+|---|---|---|
+| C1 | Auth failure outcome: state machine table said REJECTED; §4 and code say reset to PENDING + stop. | State machine table corrected: auth fail → PENDING (separate row). |
+| C2 | Checksum mismatch arrow left IN_FLIGHT in diagram; actually detected post-ACKNOWLEDGED by `verifyChecksums()`. | State machine diagram redrawn: mismatch arrow leaves ACKNOWLEDGED. |
+| C3 | `retry_count` on manual Retry: three docs said three different things. | Docs aligned: automatic retries increment; manual Retry resets to 0. Both transition table and sync-status §8 updated. |
+| C4 | `gks_synced_count` meaning: sync-status §6 said total on GKS; code writes count this run. | sync-status §6 corrected to match code (`result.synced`). |
+| C5 | `last_synced_at` written only on status-call success (sync-status §6) vs unconditionally (code). | sync-status §6 and sync-engine §7.2 corrected: written unconditionally after `verifyChecksums()` returns. |
+| C6 | `verifyChecksums()` `getFirstSync` with unordered JOIN — arbitrary row when record has multiple ACKNOWLEDGED deltas. | Added `ORDER BY d.seq DESC LIMIT 1` to the query in `syncEngine.ts`. |
+| C7 | DELETE of never-synced record left earlier PENDING CREATE/UPDATE deltas in queue — those would ghost-create the deleted record on GKS. | `syncEngine.ts`: CREATE/UPDATE deltas for `is_deleted = 1` records are acknowledged locally without network call. |
+| C8 | StatusDot syncing vs amber precedence undefined. | v2-sync-engine.md §7.1: explicit precedence Red > Pulsing > Amber > Green. |
+| C9 | Deep-link doc navigated to `RecordDetail` at root level (wrong); referenced non-existent toast component. | v2-deep-linking.md: navigation corrected to `HomeTab → RecordDetail` nested params; toast replaced with `Alert.alert`. |
+| C10 | v2-attachment-sync.md header listed "migration 002" which doesn't add relevant columns; 001 has the full V1 schema. | Header corrected: depends on 001 + 003 (which adds the V2 attachment columns). |
 
 ---
 

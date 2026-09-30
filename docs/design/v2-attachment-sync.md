@@ -4,7 +4,7 @@
 **Author:** Harshavardhana P  
 **Status:** Draft  
 **Covers:** V2-F2 (Attachment Sync), V2-F3 (Blob Purge Deferral), V2-F6 (Attachment Durability)  
-**Depends on:** REQ-0012, ADR-0005, ADR-0009, migration 001, migration 002
+**Depends on:** REQ-0012, ADR-0005, ADR-0009, migration 001 (full V1 schema including `pending_delete`), migration 003 (adds `sync_status`, `sync_error`, `delete_delta_seq` to `attachments`)
 
 ---
 
