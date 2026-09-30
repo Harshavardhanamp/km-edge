@@ -13,12 +13,29 @@ export const KEYS = {
   GKS_SYNCED_COUNT: 'gks_synced_count',
 } as const;
 
+// Keys read by background fetch tasks (expo-background-fetch fires before first
+// unlock after reboot on iOS). AFTER_FIRST_UNLOCK allows access once the device
+// has been unlocked at least once — the right trade-off for background sync
+// credentials. All other keys keep the default WHEN_UNLOCKED.
+const BG_ACCESSIBLE_KEYS = new Set<string>([
+  KEYS.GKS_SERVER_URL,
+  KEYS.GKS_USERNAME,
+  KEYS.GKS_PASSWORD_ENC,
+  KEYS.GKS_USER_ID,
+]);
+
+function opts(key: string): SecureStore.SecureStoreOptions | undefined {
+  return BG_ACCESSIBLE_KEYS.has(key)
+    ? { keychainAccessible: SecureStore.AFTER_FIRST_UNLOCK }
+    : undefined;
+}
+
 export async function get(key: string): Promise<string | null> {
-  return SecureStore.getItemAsync(key);
+  return SecureStore.getItemAsync(key, opts(key));
 }
 
 export async function set(key: string, value: string): Promise<void> {
-  await SecureStore.setItemAsync(key, value);
+  await SecureStore.setItemAsync(key, value, opts(key));
 }
 
 export async function remove(key: string): Promise<void> {
