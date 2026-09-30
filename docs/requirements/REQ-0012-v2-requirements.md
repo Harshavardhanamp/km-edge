@@ -70,7 +70,12 @@ For each PENDING delta:
    - `content_sha256`: SHA-256 of raw content string
    - `preserve_authored_body`: always `true` for edge-originated records
    - Standard fields: `title`, `content`, `tags`, `importance`, `classification`, `life_areas`
+   - `created`: ISO date string (user-editable capture date — must not be dropped)
+   - `author`: string (default `"human"`)
+   - `place`: JSON object or `null`
+   - `owner_user_id`: GKS user ID — **only included when `classification = PRIVATE`**; required for GKS RBAC to scope visibility
    - Calendar fields (`native_calendar_event_id`, `reminder_minutes`) are **not sent** — calendar integration is edge-only
+   - `schema_version` is **not sent** — GKS stamps this internally
 3. POST to `GKS /api/v1/records`.
 4. Handle response per F1.5.
 

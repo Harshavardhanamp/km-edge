@@ -17,6 +17,8 @@ import { KEYS, clearSession, get } from '../lib/secureStore';
 import { telemetry } from '../lib/telemetry';
 import { useScreenTracking } from '../lib/useScreenTracking';
 import { useAuth } from '../context/AuthContext';
+import { purgeAttachment } from '../lib/db/attachmentStore';
+import { fetchWithReauth } from '../lib/gksClient';
 
 export default function SettingsScreen({ navigation }: any) {
   useScreenTracking('SettingsScreen');
@@ -77,20 +79,60 @@ export default function SettingsScreen({ navigation }: any) {
   }
 
   async function clearAttachmentCache() {
-    // Remove blobs for soft-deleted records with no pending delta
-    Alert.alert('Clear deleted attachments?', 'This cannot be undone.', [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Clear',
-        style: 'destructive',
-        onPress: () => {
-          telemetry.action('attachment_cache_clear');
-          // ponytail: full orphan-blob purge is V2 work. In V1 unlinkAttachment already
-          // ref-counts and purges on remove — this button is a no-op placeholder.
-          Alert.alert('Done', 'Deleted attachment blobs already removed on delete.');
+    Alert.alert(
+      'Clear deleted attachments?',
+      'Only attachments whose GKS deletion was confirmed will be removed. This cannot be undone.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Clear',
+          style: 'destructive',
+          onPress: async () => {
+            telemetry.action('attachment_cache_clear');
+            const baseUrl = await get(KEYS.GKS_SERVER_URL);
+            if (!baseUrl) {
+              Alert.alert('No server configured', 'Set up GKS server first.');
+              return;
+            }
+            // Round-trip: verify GKS has acknowledged the DELETE for each candidate blob
+            // (REQ-0002 F7.6 — must verify before purging)
+            const candidates = db.getAllSync<{
+              edge_attachment_id: string;
+              gks_record_id: string | null;
+              delete_seq: number;
+            }>(
+              `SELECT a.edge_attachment_id, d.gks_id AS gks_record_id, d.seq AS delete_seq
+               FROM attachments a
+               JOIN delta_log d ON d.seq = a.delete_delta_seq
+               WHERE a.pending_delete = 1 AND d.status = 'ACKNOWLEDGED'`
+            );
+            if (candidates.length === 0) {
+              Alert.alert('Nothing to clear', 'No eligible deleted attachments found.');
+              return;
+            }
+            let purged = 0;
+            for (const c of candidates) {
+              if (c.gks_record_id) {
+                // Verify GKS record is retrievable (or gone — 404 means safely deleted)
+                try {
+                  const res = await fetchWithReauth(
+                    baseUrl,
+                    `${baseUrl}/api/v1/records/${c.gks_record_id}`,
+                    { method: 'GET' }
+                  );
+                  if (res && res.status !== 200 && res.status !== 404) continue;
+                } catch {
+                  continue; // network error — skip this blob, retry later
+                }
+              }
+              await purgeAttachment(c.edge_attachment_id);
+              purged++;
+            }
+            Alert.alert('Done', `Removed ${purged} attachment blob${purged !== 1 ? 's' : ''}.`);
+          },
         },
-      },
-    ]);
+      ]
+    );
   }
 
   const usedMB = (usedBytes / 1024 / 1024).toFixed(1);

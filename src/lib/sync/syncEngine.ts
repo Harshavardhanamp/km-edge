@@ -209,7 +209,7 @@ async function syncDelta(baseUrl: string, delta: DeltaEntry): Promise<'ok' | 'fa
 
   markInFlight(delta.seq);
 
-  const payload = {
+  const payload: Record<string, unknown> = {
     edge_id: delta.edge_id,
     record_type: gksCaptureType(record.capture_kind),
     title: record.title,
@@ -220,7 +220,15 @@ async function syncDelta(baseUrl: string, delta: DeltaEntry): Promise<'ok' | 'fa
     importance: record.importance,
     classification: record.classification,
     life_areas: record.life_areas,
+    created: record.created,
+    author: record.author,
+    place: record.place ? JSON.parse(record.place) : null,
   };
+  // PRIVATE records must carry owner_user_id so GKS RBAC can scope visibility
+  if (record.classification === 'PRIVATE') {
+    const userId = await get(KEYS.GKS_USER_ID);
+    if (userId) payload.owner_user_id = userId;
+  }
 
   let res: Response | null;
   try {
@@ -361,6 +369,20 @@ export async function runSync(): Promise<SyncResult> {
 
   // Reset any IN_FLIGHT from a previous crashed session
   resetInFlightToPending();
+
+  // E: Upload PENDING attachments for records already acknowledged in a prior run.
+  // Without this pass, attachments whose record was synced but whose upload failed
+  // in a previous run have no trigger and stay PENDING indefinitely.
+  const orphanedAttachmentRecords = db.getAllSync<{ edge_id: string; gks_id: string }>(
+    `SELECT DISTINCT r.edge_id, r.gks_id
+     FROM records r
+     JOIN record_attachments ra ON ra.edge_id = r.edge_id
+     JOIN attachments a ON a.edge_attachment_id = ra.edge_attachment_id
+     WHERE a.sync_status = 'PENDING' AND r.gks_id IS NOT NULL AND r.is_deleted = 0`
+  );
+  for (const row of orphanedAttachmentRecords) {
+    await uploadAttachments(baseUrl, row.edge_id, row.gks_id);
+  }
 
   const deltas = getPendingDeltas();
   for (const delta of deltas) {

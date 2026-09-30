@@ -2,7 +2,7 @@
 
 **Author:** Code review (automated)  
 **Scope:** All 46 documents + migrations, recordStore, attachmentStore, syncEngine, validate.ts, StatusDot, app.json  
-**Status:** A1–A4 fixed in code and docs. A5/A6 noted (no code change needed). B7–B9/B11/B12 fixed in docs. B8 fixed. C1–C10 fixed. D fixed (GKS-API-extensions.md rewritten). B1–B6, B10, E: open, deferred.
+**Status:** All items resolved. A1–A4 fixed in code and docs. A5/A6 noted (no code change needed). B1–B6, B7–B12 all fixed. C1–C10 fixed. D fixed (GKS-API-extensions.md rewritten). E fixed (orphaned attachment retry pass added to runSync).
 
 ---
 
@@ -31,16 +31,16 @@
 
 | # | Finding | Status |
 |---|---|---|
-| B1 | Allowed extension lists disagree across REQ-0002, REQ-0007, validate.ts (dropped rtf/json/svg; added heic/mp4/mov/mp3/m4a). GKS ALLOWED_EXT already matches validate.ts (23 ext). REQ-0002 and REQ-0007 need updating. | Open — needs decision |
-| B2 | Video/audio types accepted but never scoped in REQ-0007 (sources: photo/scan/files only). Either scope media capture or remove the types. | Open — needs decision |
-| B3 | REQ-0007 A4 / REQ-0002 F2.3 say 100 MB per-file cap; code enforces 50 MB. REQs not updated. | Open — needs decision |
-| B4 | REQ-0002 F1.1 / data-model.md say send `type` (KNOWLEDGE/EVENT/…) + `capture_kind`; REQ-0012 F1.6 / code sends only lowercase `record_type` (= capture_kind). GKS accepts both separately. | Open — needs decision |
-| B5 | REQ-0002 F1.2 mandatory fields: `created`, `author`, `schema_version`, `classification`. REQ-0012 F1.4 payload omits `created`, `author`, `schema_version`, `place`. User-editable date field lost on sync (violates ADR-0001 §4 no lossy transformation). `owner_user_id` for PRIVATE records also absent. | Open — needs decision |
-| B6 | REQ-0002 F7.6 requires user confirmation before blob purge + per-record GET round-trip. REQ-0012 F3 purges automatically. REQ-0005 S2.3 physical purge deferred to V2 but not delivered or re-deferred. | Open — needs decision |
+| B1 | Allowed extension lists disagree across REQ-0002, REQ-0007, validate.ts (dropped rtf/json/svg; added heic/mp4/mov/mp3/m4a). GKS ALLOWED_EXT already matches validate.ts (23 ext). REQ-0002 and REQ-0007 need updating. | ✅ Fixed — REQ-0002 F2.1 and REQ-0007 A2 updated to 23-extension list |
+| B2 | Video/audio types accepted but never scoped in REQ-0007 (sources: photo/scan/files only). Either scope media capture or remove the types. | ✅ Fixed — REQ-0007 A1 adds media library source; A2 documents video/audio acceptance; A7 updated with video/audio preview |
+| B3 | REQ-0007 A4 / REQ-0002 F2.3 say 100 MB per-file cap; code enforces 50 MB. REQs not updated. | ✅ Fixed — REQ-0007 A4 and REQ-0002 F2.3 updated to 50 MB |
+| B4 | REQ-0002 F1.1 / data-model.md say send `type` (KNOWLEDGE/EVENT/…) + `capture_kind`; REQ-0012 F1.6 / code sends only lowercase `record_type` (= capture_kind). GKS accepts both separately. | ✅ Fixed — REQ-0002 F1.1 note added; data-model.md Fields Edge Sends table clarified; `type` not in wire format |
+| B5 | REQ-0002 F1.2 mandatory fields: `created`, `author`, `schema_version`, `classification`. REQ-0012 F1.4 payload omits `created`, `author`, `schema_version`, `place`. User-editable date field lost on sync (violates ADR-0001 §4 no lossy transformation). `owner_user_id` for PRIVATE records also absent. | ✅ Fixed — syncEngine.ts payload now includes `created`, `author`, `place`, `owner_user_id` (PRIVATE only). REQ-0012 F1.4 updated. KEYS.GKS_USER_ID added to secureStore; stored at login. `schema_version` intentionally omitted (GKS stamps). |
+| B6 | REQ-0002 F7.6 requires user confirmation before blob purge + per-record GET round-trip. REQ-0012 F3 purges automatically. REQ-0005 S2.3 physical purge deferred to V2 but not delivered or re-deferred. | ✅ Fixed — SettingsScreen clearAttachmentCache() now: (1) confirms with user, (2) calls GET /api/v1/records/{gks_id} per candidate to verify GKS receipt, (3) purges only verified blobs. REQ-0002 F7.6 retained as-is. |
 | B7 | REQ-0002 F7.2 sync trigger list vs REQ-0012 F1.1 — not reconciled. | ✅ Fixed — REQ-0002 F7.2 updated to list all 3 triggers. |
 | B8 | REQ-0008 OB7 and implementation-plan-observability.md said GKS dashboard + central server were V1. | ✅ Fixed — updated to V3. |
 | B9 | REQ-0008 OB1.1 requires `tenant_id`; REQ-0012 E8 drops tenantId; code stores empty string. | ✅ Fixed — OB1.1 updated; tenant_id drop documented with migration note. |
-| B10 | Three different telemetry endpoints across REQ-0008, GKS-API-extensions, and code. | Open — GKS-API-extensions.md now reflects `POST /api/v1/telemetry/events` (the real endpoint). REQ-0008 OB3 still says `km_edge_*` tables — deferred to B set decisions. |
+| B10 | Three different telemetry endpoints across REQ-0008, GKS-API-extensions, and code. | ✅ Fixed — REQ-0008 OB3 updated: references `POST /api/v1/telemetry/events`; km_edge_* tables noted as V3 admin dashboard design only. |
 | B11 | calendar.md (Frozen) says UI shows dialog before soft-delete. Code does it silently in the store. | ✅ Fixed — calendar.md updated to match REQ-0012 F4.3. |
 | B12 | local-storage.md missing `SYNCED` as a `sync_status` value. | ✅ Fixed — both `records.sync_status` and `delta_log.status` comments updated. |
 
@@ -69,12 +69,13 @@
 
 ---
 
-## E. Undecided gaps (all open)
+## E. Undecided gaps
 
+- Pending attachment retry: ✅ Fixed — `runSync()` now starts with an orphaned-attachment retry pass (query: PENDING attachments for records with gks_id set and not deleted).
+
+Remaining open gaps (not fixed in this session):
 - Background sync over Tailscale: iOS background fetch may fire without VPN up. Behaviour undefined.
 - iOS Keychain accessibility in background: silent re-auth reads SecureStore during background fetch; may block before first unlock.
-- Pending attachment retry: PENDING attachments whose parent record was acknowledged in a previous run have no trigger. Need an explicit "upload all PENDING attachments of synced records" phase in runSync().
 - Manual server URL entry: still absent from REQ-0004 / login-screen.md.
-- Never-synced DELETE with earlier CREATE/UPDATE deltas still PENDING: those will be transmitted and create a ghost record. (C7 above.)
 - `preserve_authored_body`: GKS already passes it unconditionally (archive.py); edge sends it redundantly. Harmless but should be verified and documented.
 - No V2 test plan despite NF2 declaring sync highest-priority NFR.

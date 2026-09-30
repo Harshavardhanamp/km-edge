@@ -89,7 +89,10 @@ These fields must NOT be set by KM-Edge. GKS stamps them at ingest time:
 | Field | Type | Notes |
 |---|---|---|
 | `edge_id` | string (UUID v7) | Extension field; GKS must index for deduplication |
-| All fields in Record Envelope above | — | Already valid GKS frontmatter fields |
+| `record_type` | string (lowercase) | Wire format only — e.g. `"journal"`, `"note"`, `"event"`. GKS derives `type` and `capture_kind` internally. This is **not** the GKS `type` field (`KNOWLEDGE`/`EVENT`/…). |
+| All other fields in Record Envelope above | — | Already valid GKS frontmatter fields |
+
+**Note on `type` field (updated 2026-09-30):** The GKS sync payload does NOT send `type` (the canonical uppercase string like `KNOWLEDGE`). The payload sends `record_type` (lowercase `capture_kind` equivalent, e.g. `"journal"`). GKS maps this to the correct `type` + `capture_kind` internally. The `type` field in the Record Envelope is for edge-local storage and display only.
 
 ---
 

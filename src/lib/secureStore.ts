@@ -8,6 +8,7 @@ export const KEYS = {
   OFFLINE_VERIFIER_SALT: 'offline_verifier_salt',
   OFFLINE_ATTEMPT_COUNT: 'offline_attempt_count',
   CALENDAR_SELECTED_IDS: 'calendar_selected_ids', // preference, not cleared on logout
+  GKS_USER_ID: 'gks_user_id',
   LAST_SYNCED_AT: 'last_synced_at',
   GKS_SYNCED_COUNT: 'gks_synced_count',
 } as const;
@@ -27,6 +28,7 @@ export async function remove(key: string): Promise<void> {
 export async function clearSession(): Promise<void> {
   await Promise.all([
     remove(KEYS.GKS_USERNAME),
+    remove(KEYS.GKS_USER_ID),
     remove(KEYS.GKS_PASSWORD_ENC),
     remove(KEYS.OFFLINE_VERIFIER),
     remove(KEYS.OFFLINE_VERIFIER_SALT),

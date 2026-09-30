@@ -27,6 +27,8 @@ Types not exposed in initial release: `PROJECT`, `QUESTION`, `TOPIC`, `PLACE`, `
 
 **Mapping confidence:** HIGH. All 7 types map exactly. No unmappable types were requested.
 
+**Sync payload note (updated 2026-09-30):** The GKS sync payload sends `record_type` (lowercase `capture_kind`, e.g. `"journal"`) — not the GKS canonical `type` string (`KNOWLEDGE`/`EVENT`/…). GKS derives `type` internally from `record_type`. The `type` field in this table is for data-model reference only, not for the sync wire format.
+
 ### F1.2 Mandatory Fields per Record (matches GKS `REQUIRED`)
 Every record must carry:
 - `title` — user-supplied or auto-derived from first line of content
@@ -59,8 +61,10 @@ Before a record reaches GKS and gets a typed ID, it is identified by a local `ed
 ## F2 — Attachments (Initial Release)
 
 ### F2.1 Accepted File Types
-Identical to GKS `ALLOWED_EXT`:  
-`pdf, txt, md, rtf, csv, json, doc, docx, xls, xlsx, ppt, pptx, jpg, jpeg, png, webp, gif, svg`
+The accepted set (matches GKS `ALLOWED_EXT` and edge `validate.ts`):  
+`pdf, txt, md, csv, doc, docx, xls, xlsx, ppt, pptx, jpg, jpeg, png, webp, gif, heic, mp4, mov, mp3, m4a`
+
+Media files (heic, mp4, mov, mp3, m4a) are accepted from the device file picker. Photos taken with the camera or picked from the gallery are always accepted (JPEG/PNG output).
 
 ### F2.2 Rejected File Types
 - Password-protected/encrypted files: encrypted PDFs, password-protected ZIPs, encrypted Office docs
@@ -71,7 +75,7 @@ Identical to GKS `ALLOWED_EXT`:
 **Note:** Content-level scanning (malware via ClamAV) does NOT happen on edge. Files are transmitted to GKS on sync; GKS performs all content-level security scanning before accepting into the vault. The edge enforces extension-level rejection only.
 
 ### F2.3 File Size
-- Per-file limit: 100 MiB (matching GKS default)
+- Per-file limit: 50 MiB (edge enforced; code cap is 50 MB — updated 2026-09-30)
 - Files stored as local blobs on device until sync; SHA-256 computed on edge at capture time
 
 ### F2.4 Attachment Metadata

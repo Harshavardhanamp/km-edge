@@ -87,8 +87,8 @@ Per error event:
 ## OB3 — Telemetry Transport
 
 - **V1:** Collected and stored locally. Not yet transmitted. No separate telemetry channel in V1.
-- **V2:** Batched with record sync. GKS receives telemetry events alongside record delta entries. GKS stores in its own observability store.
-- **GKS → Central server:** GKS pushes telemetry to the central server independently on a schedule (e.g. hourly). This is a GKS-side push, not edge-initiated.
+- **V2:** `flushTelemetry()` in `syncEngine.ts` posts batches of up to 200 events per sync run to `POST /api/v1/telemetry/events` on GKS (Ext 8 — see `GKS-API-extensions.md`). Events are marked `transmitted = 1` on acknowledgement. The `km_edge_*` observability tables on GKS are a V3 admin dashboard design item — not built in V2.
+- **GKS → Central server:** GKS pushes telemetry to the central server independently on a schedule (e.g. hourly). This is a GKS-side push, not edge-initiated. **V3.**
 
 ---
 

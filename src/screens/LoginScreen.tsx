@@ -66,6 +66,7 @@ export default function LoginScreen({ navigation, route }: Props) {
 
     // Store credentials for silent re-auth and offline verifier
     await set(KEYS.GKS_USERNAME, username.trim());
+    await set(KEYS.GKS_USER_ID, result.userId);
     await set(KEYS.GKS_PASSWORD_ENC, password);
 
     // Refresh offline verifier

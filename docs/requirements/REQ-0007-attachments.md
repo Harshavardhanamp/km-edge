@@ -9,7 +9,7 @@
 
 ## A1 — File Sources
 
-All four sources supported:
+All five sources supported:
 
 | Source | Mechanism |
 |---|---|
@@ -17,15 +17,17 @@ All four sources supported:
 | Device camera — take photo | `expo-camera` or `expo-image-picker` (camera mode) |
 | Device photo library | `expo-image-picker` (gallery mode) |
 | Device camera — scan document | `expo-camera` with document scan mode or OS document scanner |
+| Device media library (video/audio) | `expo-document-picker` (file mode, user selects mp4/mov/mp3/m4a) |
 
 ---
 
 ## A2 — Accepted File Types
 
-Identical to GKS `ALLOWED_EXT`:
-`pdf, txt, md, rtf, csv, json, doc, docx, xls, xlsx, ppt, pptx, jpg, jpeg, png, webp, gif, svg`
+Identical to GKS `ALLOWED_EXT` and edge `validate.ts` (updated 2026-09-30 — 23 extensions):  
+`pdf, txt, md, rtf, csv, json, doc, docx, xls, xlsx, ppt, pptx, jpg, jpeg, png, webp, gif, svg, heic, mp4, mov, mp3, m4a`
 
-Photos taken with camera or picked from gallery are always accepted (JPEG/PNG output).
+Photos taken with camera or picked from gallery are always accepted (JPEG/PNG output).  
+Video/audio files (`mp4`, `mov`, `mp3`, `m4a`) and HEIC images are accepted via the file picker (A1 — media library source).
 
 ---
 
@@ -49,7 +51,7 @@ Content-level malware scanning delegated to GKS at sync time (GKS runs ClamAV).
 |---|---|
 | Max files per record | 10 |
 | Max total size per record | 50 MB (sum of all attachments on that record) |
-| Max single file size | 100 MB (GKS default — edge enforces same) |
+| Max single file size | 50 MB (edge enforced; updated 2026-09-30 to match code) |
 
 Both limits checked before saving. If either is exceeded, show inline error. Existing attachments on the record are not affected.
 
@@ -76,9 +78,11 @@ Photos taken with the camera or picked from the photo library are compressed bef
 
 ## A7 — Preview on Record Detail Screen
 
-- **Images** (`jpg`, `jpeg`, `png`, `webp`, `gif`): rendered inline as thumbnails in the attachments section. Tap to view full-screen.
+- **Images** (`jpg`, `jpeg`, `png`, `webp`, `gif`, `heic`): rendered inline as thumbnails in the attachments section. Tap to view full-screen.
 - **PDF and documents**: show filename + size + type icon. Tap to open in device system viewer (`expo-sharing` or `Linking.openURL`).
 - **SVG**: rendered as image thumbnail if possible, otherwise filename + icon.
+- **Video** (`mp4`, `mov`): show filename + duration estimate + video icon. Tap to open in device media player.
+- **Audio** (`mp3`, `m4a`): show filename + audio icon. Tap to open in device media player.
 
 ---
 
