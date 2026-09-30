@@ -2,7 +2,7 @@
 
 **Author:** Code review (automated)  
 **Scope:** All 46 documents + migrations, recordStore, attachmentStore, syncEngine, validate.ts, StatusDot, app.json  
-**Status:** A1–A4 fixed in code and docs. A5/A6 noted (no code change needed). B8 fixed in docs. C1–C10 fixed (C6/C7 in code; C1–C5/C8–C10 in docs). B1–B7, B9–B12, D, E: open, deferred.
+**Status:** A1–A4 fixed in code and docs. A5/A6 noted (no code change needed). B7–B9/B11/B12 fixed in docs. B8 fixed. C1–C10 fixed. D fixed (GKS-API-extensions.md rewritten). B1–B6, B10, E: open, deferred.
 
 ---
 
@@ -27,22 +27,22 @@
 
 ---
 
-## B. REQ-0012 vs frozen V1 requirements (all open except B8)
+## B. REQ-0012 vs frozen V1 requirements
 
-| # | Finding |
-|---|---|
-| B1 | Allowed extension lists disagree across REQ-0002, REQ-0007, validate.ts (dropped rtf/json/svg; added heic/mp4/mov/mp3/m4a). GKS ALLOWED_EXT already matches validate.ts (23 ext). REQ-0002 and REQ-0007 need updating. |
-| B2 | Video/audio types accepted but never scoped in REQ-0007 (sources: photo/scan/files only). Either scope media capture or remove the types. |
-| B3 | REQ-0007 A4 / REQ-0002 F2.3 say 100 MB per-file cap; code enforces 50 MB. REQs not updated. |
-| B4 | REQ-0002 F1.1 / data-model.md say send `type` (KNOWLEDGE/EVENT/…) + `capture_kind`; REQ-0012 F1.6 / code sends only lowercase `record_type` (= capture_kind). GKS DirectCaptureRequest accepts `record_type` + `capture_kind` separately. |
-| B5 | REQ-0002 F1.2 mandatory fields: `created`, `author`, `schema_version`, `classification`. REQ-0012 F1.4 payload omits `created`, `author`, `schema_version`, `place`. User-editable date field lost on sync (violates ADR-0001 §4 no lossy transformation). `owner_user_id` for PRIVATE records also absent. |
-| B6 | REQ-0002 F7.6 requires user confirmation before blob purge + per-record GET round-trip. REQ-0012 F3 purges automatically. REQ-0005 S2.3 physical purge deferred to V2 but not delivered or re-deferred. |
-| B7 | REQ-0002 F7.2 sync trigger list vs REQ-0012 F1.1 — not reconciled; F7 still Draft. |
-| B8 | Fixed — OB7 updated to V3. |
-| B9 | REQ-0008 OB1.1 requires `tenant_id NOT NULL`; REQ-0012 E8 drops tenantId; code stores empty string. Column constraint vs resolution disagree. |
-| B10 | Three different telemetry endpoints: REQ-0008 OB3 → GKS `km_edge_*` tables; GKS-API-extensions Ext 4a → `POST /api/v1/km-edge/telemetry`; code → `POST /api/v1/telemetry/events`. |
-| B11 | calendar.md (Frozen) says UI shows dialog + calls `deleteEvent()` before soft-delete. Code (following REQ-0012 F4.3) does it silently inside the store. calendar.md is now wrong. |
-| B12 | local-storage.md documents `sync_status` values: PENDING / ACKNOWLEDGED / REJECTED. syncEngine.ts:241 writes `'SYNCED'`. |
+| # | Finding | Status |
+|---|---|---|
+| B1 | Allowed extension lists disagree across REQ-0002, REQ-0007, validate.ts (dropped rtf/json/svg; added heic/mp4/mov/mp3/m4a). GKS ALLOWED_EXT already matches validate.ts (23 ext). REQ-0002 and REQ-0007 need updating. | Open — needs decision |
+| B2 | Video/audio types accepted but never scoped in REQ-0007 (sources: photo/scan/files only). Either scope media capture or remove the types. | Open — needs decision |
+| B3 | REQ-0007 A4 / REQ-0002 F2.3 say 100 MB per-file cap; code enforces 50 MB. REQs not updated. | Open — needs decision |
+| B4 | REQ-0002 F1.1 / data-model.md say send `type` (KNOWLEDGE/EVENT/…) + `capture_kind`; REQ-0012 F1.6 / code sends only lowercase `record_type` (= capture_kind). GKS accepts both separately. | Open — needs decision |
+| B5 | REQ-0002 F1.2 mandatory fields: `created`, `author`, `schema_version`, `classification`. REQ-0012 F1.4 payload omits `created`, `author`, `schema_version`, `place`. User-editable date field lost on sync (violates ADR-0001 §4 no lossy transformation). `owner_user_id` for PRIVATE records also absent. | Open — needs decision |
+| B6 | REQ-0002 F7.6 requires user confirmation before blob purge + per-record GET round-trip. REQ-0012 F3 purges automatically. REQ-0005 S2.3 physical purge deferred to V2 but not delivered or re-deferred. | Open — needs decision |
+| B7 | REQ-0002 F7.2 sync trigger list vs REQ-0012 F1.1 — not reconciled. | ✅ Fixed — REQ-0002 F7.2 updated to list all 3 triggers. |
+| B8 | REQ-0008 OB7 and implementation-plan-observability.md said GKS dashboard + central server were V1. | ✅ Fixed — updated to V3. |
+| B9 | REQ-0008 OB1.1 requires `tenant_id`; REQ-0012 E8 drops tenantId; code stores empty string. | ✅ Fixed — OB1.1 updated; tenant_id drop documented with migration note. |
+| B10 | Three different telemetry endpoints across REQ-0008, GKS-API-extensions, and code. | Open — GKS-API-extensions.md now reflects `POST /api/v1/telemetry/events` (the real endpoint). REQ-0008 OB3 still says `km_edge_*` tables — deferred to B set decisions. |
+| B11 | calendar.md (Frozen) says UI shows dialog before soft-delete. Code does it silently in the store. | ✅ Fixed — calendar.md updated to match REQ-0012 F4.3. |
+| B12 | local-storage.md missing `SYNCED` as a `sync_status` value. | ✅ Fixed — both `records.sync_status` and `delta_log.status` comments updated. |
 
 ---
 
@@ -63,9 +63,9 @@
 
 ---
 
-## D. GKS-API-extensions.md is stale (open)
+## D. GKS-API-extensions.md
 
-Every extension disagrees with REQ-0012: endpoint paths, response shapes, 409 body, telemetry endpoint. Missing: DELETE /api/v1/records/{id}, content_sha256 frontmatter, preserve_authored_body, attachment endpoints, ALLOWED_EXT change (already done in GKS). Needs a full rewrite as the single GKS contract.
+✅ **Fixed** — Complete rewrite. Now reflects actual GKS implementation: correct endpoint paths, response shapes (including real 409 body), all 8 implemented extensions documented, Ext 9 (batch ingest) marked not built, Ext 10/11 (admin dashboard + central server push) marked V3.
 
 ---
 

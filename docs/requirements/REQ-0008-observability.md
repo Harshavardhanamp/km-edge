@@ -27,12 +27,13 @@ All four categories tracked from V1 day one. Stored locally, pushed via V2 sync.
 ### OB1.1 Session
 - `session_id` — UUID v7, generated on each app launch
 - `user_id` — GKS user ID (from login)
-- `tenant_id` — GKS instance identifier
 - `session_start` — ISO8601 timestamp
 - `session_end` — ISO8601 timestamp (recorded on app background/close)
 - `session_duration_seconds` — computed on close
 - `device_platform` — `ios` | `android`
 - `app_version` — KM-Edge version string
+
+**Note:** `tenant_id` was dropped (REQ-0012 E8 resolution). GKS has no tenant concept — `user_id` is the scope. The `telemetry_events` table stores an empty string for the column that remains for schema compatibility; the column will be removed in a future migration.
 
 ### OB1.2 Screen visits
 Per screen visit within a session:

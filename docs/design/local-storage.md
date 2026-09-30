@@ -49,7 +49,7 @@ CREATE TABLE records (
   updated_at    TEXT,                       -- ISO8601, null if never edited
   is_deleted    INTEGER NOT NULL DEFAULT 0, -- soft delete flag
   deleted_at    TEXT,                       -- ISO8601, null if not deleted
-  sync_status   TEXT NOT NULL DEFAULT 'PENDING',
+  sync_status   TEXT NOT NULL DEFAULT 'PENDING',  -- PENDING | SYNCED | ACKNOWLEDGED | REJECTED
   content_sha256 TEXT NOT NULL
 );
 
@@ -75,7 +75,7 @@ CREATE TABLE delta_log (
   timestamp         TEXT NOT NULL,          -- ISO8601
   content_sha256    TEXT,                   -- null for DELETE
   attachment_edge_ids TEXT NOT NULL DEFAULT '[]', -- JSON array
-  status            TEXT NOT NULL DEFAULT 'PENDING',
+  status            TEXT NOT NULL DEFAULT 'PENDING', -- PENDING | IN_FLIGHT | ACKNOWLEDGED | REJECTED
   gks_id            TEXT,                   -- filled by V2 sync on ACKNOWLEDGED
   gks_acknowledged_at TEXT,
   gks_error         TEXT,

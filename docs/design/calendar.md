@@ -113,13 +113,8 @@ Additional fields shown only when `type === EVENT` inside "More details" section
 
 ### On EVENT record delete
 1. Check `has_calendar_entry` flag
-2. If true: show confirmation dialog:
-   ```
-   Delete record?
-   This will also remove the linked calendar entry.
-   [Delete]   [Keep editing]
-   ```
-3. On confirm: `calendar.deleteEvent(native_calendar_event_id)` then soft-delete record
+2. `softDeleteRecord()` in `recordStore.ts` attempts `calendar.deleteEvent(native_calendar_event_id)` silently — all calendar errors are caught and ignored (permission revoked or event already gone does not block the delete).
+3. No separate confirmation dialog for the calendar entry. The standard record-delete confirmation in the UI covers the action. (Updated 2026-09-30 — REQ-0012 F4.3 supersedes the earlier dialog approach.)
 
 ---
 

@@ -170,7 +170,10 @@ Sync is a cornerstone feature. Reliability, durability, and accuracy are the pri
 ### F7.2 Sync Model
 - **Direction:** Edge → GKS push (initial sync release). Bidirectional in a later release.
 - **Transport:** GKS local API over Tailscale private VPN. No cloud intermediary.
-- **Trigger:** Manual ("Sync now") and automatic when GKS comes online.
+- **Trigger:** Three triggers (per REQ-0012 F1.1):
+  1. Background — every 15 minutes via `expo-background-fetch`
+  2. Foreground — on app foreground when GKS probe result is online
+  3. Manual — "Sync now" button in StatusDetailScreen
 
 ### F7.3 Delta Sync
 - Every write on edge is appended to `delta.json` (append-only durable log): `{edge_id, operation: CREATE|UPDATE, timestamp, checksum}`
