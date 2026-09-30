@@ -27,13 +27,16 @@ Per ADR-0006: follow the steps in order; any deviation is surfaced before procee
 
 ## K1 — Test harness and fixtures pin
 
-1. `npx expo install jest-expo jest @types/jest`; `jest.config.js`; `npm test`, `typecheck`, `lint` scripts.
-2. Mocks: `expo-sqlite` (in-memory via `better-sqlite3` adapter or the package's official mock), `expo-secure-store`, `expo-file-system`, `expo-network`, `expo-crypto`.
+> **Installation note:** `jest-expo`, `jest`, `@types/jest`, `better-sqlite3` and any other test dependencies are installed on the target machine, not committed here. Only configuration and code files are in this repo.
+
+1. ~~`npx expo install jest-expo jest @types/jest`~~ — **target machine only.**
+   Repo delivers: `jest.config.js`; `package.json` scripts (`test`, `typecheck`, `lint`) added without running installs.
+2. Mocks (code only — no install): `src/test/__mocks__/expo-sqlite.ts`, `expo-secure-store.ts`, `expo-file-system.ts`, `expo-network.ts`, `expo-crypto.ts`.
 3. Copy `generational-knowledge-system/contracts/edge-sync/v1/` → `src/test/fixtures/edge-sync/v1/` with `MANIFEST.sha256`; `fixtures.pin.test.ts` fails on drift.
 4. `src/test/mockGks.ts` serving fixtures with stateful scenarios.
 5. First real tests: `migration001-003` smoke (schema present), `deltaStore` state machine.
 
-**Gate:** `npm test` green with ≥ 5 suites.
+**Gate:** `npm test` green with ≥ 5 suites (run on target machine after installing deps).
 
 ## K2 — Contract, client, discovery, auth
 
