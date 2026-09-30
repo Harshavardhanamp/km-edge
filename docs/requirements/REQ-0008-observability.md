@@ -155,15 +155,15 @@ Accessible to super admin only (separate auth, not GKS credentials):
 
 ## OB7 — Scope by Release
 
-| Component | V1 | V2 |
-|---|---|---|
-| Edge telemetry collection + local storage | ✅ | — |
-| GKS observability tables + admin dashboard | ✅ (GKS-side) | — |
-| Edge → GKS telemetry transmission | ❌ | ✅ (batched with sync) |
-| GKS → Central server push | ❌ | ✅ |
-| Central server + super admin dashboard | ✅ (built in V1, receives data in V2) | — |
+**Updated 2026-09-30:** REQ-0012 moved GKS admin dashboard and central server to V3. Edge telemetry transmission (Edge → GKS) remains V2.
 
-Central server is built in V1 so it is ready when GKS starts pushing in V2. No data flows to it until V2.
+| Component | V1 | V2 | V3 |
+|---|---|---|---|
+| Edge telemetry collection + local storage | ✅ | — | — |
+| Edge → GKS telemetry transmission | ❌ | ✅ (batched with sync) | — |
+| GKS observability tables + admin dashboard | ❌ | ❌ | ✅ |
+| GKS → Central server push | ❌ | ❌ | ✅ |
+| Central server + super admin dashboard | ❌ | ❌ | ✅ |
 
 ---
 

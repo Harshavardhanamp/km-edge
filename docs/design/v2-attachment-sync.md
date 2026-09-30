@@ -16,7 +16,7 @@ Attachment sync transmits locally-stored blobs to GKS after their parent record 
 
 ### Blob Purge Deferral
 
-Blob purge deferral prevents a locally-stored binary from being deleted before GKS has acknowledged the DELETE delta for its parent record. When a user deletes a record, the blob is not removed immediately. Instead, `unlinkAttachment()` marks the attachment row with `pending_delete = 1` and records the `seq` of the DELETE delta. The sync engine defers physical file removal until that specific delta reaches `ACKNOWLEDGED` status in `delta_log`. For records that were never synced to GKS, the blob is purged immediately because there is no in-flight operation to protect. This eliminates the window where a user could delete a record, GKS could fail to receive the delete, and the local blob would already be gone before a retry.
+Blob purge deferral prevents a locally-stored binary from being deleted before GKS has acknowledged the DELETE delta for its parent record. When a user deletes a record, the blob is not removed immediately. Instead, `softDeleteRecord()` marks all attachments for the record with `pending_delete = 1` and stamps `delete_delta_seq` with the newly-inserted DELETE delta seq — inside the same transaction as the delete. `unlinkAttachment()` handles the separate case of removing an attachment from a live record (see §5.4). The sync engine defers physical file removal until that specific delta reaches `ACKNOWLEDGED` status in `delta_log`. For records that were never synced to GKS, the blob is purged immediately because there is no in-flight operation to protect. This eliminates the window where a user could delete a record, GKS could fail to receive the delete, and the local blob would already be gone before a retry.
 
 ---
 
@@ -268,6 +268,8 @@ The calendar deletion is attempted locally, at soft-delete time, not during sync
 
 ### 5.3 Never-Synced Delete
 
+**A1 fix (2026-09-30):** `gks_record_id` on a DELETE delta is now stamped at delete time by `softDeleteRecord()` — it reads `records.gks_id` inside the transaction and includes it in the `delta_log` INSERT. The sync engine check at `syncEngine.ts:144` is now correct: null means the record genuinely never reached GKS.
+
 When a DELETE delta is processed and `gks_record_id` is null on that delta row, the record was never transmitted to GKS. There is no remote reference to protect. In this case:
 
 1. Acknowledge the delta immediately (no network call needed).
@@ -277,7 +279,9 @@ This path is identified in the sync engine by checking `delta_log.gks_record_id 
 
 ### 5.4 unlinkAttachment() — V2 Behavior
 
-Current V1 behavior sets `pending_delete = 1` but does not populate `delete_delta_seq`. V2 adds the seq lookup:
+**A4 fix (2026-09-30):** Purge deferral only makes sense when the parent record is being deleted — the deferral waits for the DELETE delta to be acknowledged before removing the blob. When an attachment is removed from a *live* record, there is no DELETE delta to wait for; the blob should be purged immediately once the ref count hits zero. `unlinkAttachment()` now checks whether a DELETE delta exists for the record: if yes, defer (set `pending_delete = 1`, stamp `delete_delta_seq`); if no, call `purgeAttachment()` immediately.
+
+Previous V1 behavior set `pending_delete = 1` but did not populate `delete_delta_seq`. V2 adds the seq lookup:
 
 ```typescript
 export async function unlinkAttachment(

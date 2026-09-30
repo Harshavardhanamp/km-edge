@@ -55,6 +55,10 @@ Before processing any delta:
 
 Process all `PENDING` deltas in ascending `seq` order. Each delta is processed independently — a failure on one delta does not block subsequent deltas.
 
+### F1.3a UPDATE Delta Handling
+
+GKS records are immutable after creation — no PUT or PATCH endpoint exists. UPDATE deltas for records that already have a `gks_id` (i.e. already synced) are acknowledged locally without any network call. Local edits to synced records are preserved on the edge device but do not propagate to GKS in V2. Bidirectional sync and edit propagation are deferred to V3.
+
 ### F1.4 Per-Delta Protocol
 
 For each PENDING delta:
@@ -176,13 +180,15 @@ If a record is deleted before it was ever synced to GKS (`gks_record_id` is null
 `attachments` table gains one column (migration 003):
 - `delete_delta_seq INTEGER` — set by `unlinkAttachment()` at the time `pending_delete = 1` is written. References `delta_log.seq` of the DELETE delta for the parent record.
 
-### F3.4 unlinkAttachment Behavior (V2)
+### F3.4 Blob Pending-Delete Writers
 
-`unlinkAttachment(edge_id, edge_attachment_id)`:
-1. Delete from `record_attachments`.
-2. Check ref count. If zero:
-   a. Set `pending_delete = 1`.
-   b. Query `delta_log` for the most recent DELETE delta for `edge_id`. Store its `seq` as `delete_delta_seq`.
+Two separate paths set `pending_delete = 1`:
+
+**softDeleteRecord()** (record deletion): Inside the transaction, after inserting the DELETE delta, sets `pending_delete = 1` and `delete_delta_seq = newSeq` on all `attachments` rows for that record. This is the primary purge-deferral path.
+
+**unlinkAttachment()** (removing attachment from a live record): Deletes from `record_attachments`, checks ref count. If zero:
+- If a DELETE delta exists for the record (parent record is also being deleted): set `pending_delete = 1`, `delete_delta_seq` = that delta's seq.
+- If no DELETE delta exists (attachment removed from a live record): call `purgeAttachment()` immediately. There is no in-flight GKS operation to protect, so deferral is unnecessary.
 
 ### F3.5 Orphan Cleanup
 
@@ -207,6 +213,8 @@ During every sync run, after delta processing:
 `softDeleteRecord()` populates `attachment_edge_ids` with the IDs of all attachments linked to the record at the moment of deletion (queried from `record_attachments`).
 
 ### F4.2 Sync Engine DELETE Handling
+
+`gks_record_id` is stamped onto the DELETE delta row at insert time by `softDeleteRecord()` (reads `records.gks_id` inside the same transaction). This ensures the sync engine can distinguish never-synced from synced records without a secondary lookup.
 
 For DELETE deltas:
 - If `gks_record_id` is null (never synced): acknowledge immediately. Purge blobs immediately (F3.2).

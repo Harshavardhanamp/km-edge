@@ -35,7 +35,10 @@ This step runs in parallel with or immediately after each feature sprint.
 
 ---
 
-## Part B — Central Observability Server (V1, separate repo)
+## Part B — Central Observability Server (V3, separate repo)
+
+**Deferred to V3 per REQ-0012 (2026-09-30).** Steps 6–10 below are the approved design but will not be implemented until V3.
+
 
 ### Step 6 — Create `gks-central-obs` repo
 New Python FastAPI project. SQLite database. Minimal — no framework bloat.
@@ -59,7 +62,10 @@ HTTPS via Let's Encrypt (Caddy or nginx).
 
 ---
 
-## Part C — GKS Extensions (tracked in GKS repo)
+## Part C — GKS Extensions (V3, tracked in GKS repo)
+
+**Deferred to V3 per REQ-0012 (2026-09-30).**
+
 
 ### Step 11 — GKS observability tables + admin dashboard
 New tables in GKS: `km_edge_sessions`, `km_edge_actions`, `km_edge_errors`.

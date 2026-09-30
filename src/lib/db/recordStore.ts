@@ -209,7 +209,7 @@ export function updateRecord(
 
 export async function softDeleteRecord(edge_id: string): Promise<void> {
   const existing = db.getFirstSync<RecordRow>(
-    `SELECT type, capture_kind, has_calendar_entry, native_calendar_event_id
+    `SELECT type, capture_kind, has_calendar_entry, native_calendar_event_id, gks_id
      FROM records WHERE edge_id = ? AND is_deleted = 0`,
     edge_id
   );
@@ -241,30 +241,32 @@ export async function softDeleteRecord(edge_id: string): Promise<void> {
       attachmentRows.map(r => r.edge_attachment_id)
     );
 
+    // A1 fix: stamp gks_id at delete time so sync engine can find it
     db.runSync(
       `INSERT INTO delta_log (
         edge_id, operation, record_type, capture_kind, timestamp,
-        attachment_edge_ids, status
-      ) VALUES (?, 'DELETE', ?, ?, ?, ?, 'PENDING')`,
+        attachment_edge_ids, status, gks_record_id
+      ) VALUES (?, 'DELETE', ?, ?, ?, ?, 'PENDING', ?)`,
       edge_id,
       existing.type,
       existing.capture_kind,
       now,
-      attachmentEdgeIds
+      attachmentEdgeIds,
+      existing.gks_id ?? null
     );
 
     const newSeq = db.getFirstSync<{ seq: number }>(
       `SELECT last_insert_rowid() AS seq`
     )!.seq;
 
+    // A3 fix: mark all attachments for this record as pending-delete so
+    // the sync engine purges blobs after the DELETE delta is acknowledged
     db.runSync(
       `UPDATE attachments
-       SET delete_delta_seq = ?
+       SET pending_delete = 1, delete_delta_seq = ?
        WHERE edge_attachment_id IN (
          SELECT edge_attachment_id FROM record_attachments WHERE edge_id = ?
-       )
-       AND pending_delete = 1
-       AND delete_delta_seq IS NULL`,
+       )`,
       newSeq,
       edge_id
     );

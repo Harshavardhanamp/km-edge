@@ -183,6 +183,14 @@ async function syncDelta(baseUrl: string, delta: DeltaEntry): Promise<'ok' | 'fa
     return 'fail';
   }
 
+  // A2 fix: GKS records are immutable — no PUT/PATCH endpoint exists.
+  // UPDATE deltas for already-synced records have nothing to do remotely;
+  // acknowledge locally so they don't block the queue or hit 409 loops.
+  if (delta.operation === 'UPDATE' && record.gks_id) {
+    acknowledgeDelta(delta.seq, record.gks_id);
+    return 'ok';
+  }
+
   markInFlight(delta.seq);
 
   const payload = {

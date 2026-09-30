@@ -50,9 +50,14 @@ runSync()
 │
 ├── 5. For each delta (independent — one failure does not stop others):
 │   │
-│   ├── 5a. markInFlight(seq)      [DB write before network call]
+│   ├── 5a. [UPDATE delta with gks_id set] → acknowledge locally, skip network call
+│   │       GKS records are immutable — no PUT/PATCH endpoint exists. Local edits
+│   │       do not propagate to GKS. UPDATE deltas for already-synced records are
+│   │       acknowledged immediately so they do not block the queue.
 │   │
-│   ├── 5b. Build GKS payload:
+│   ├── 5b. markInFlight(seq)      [DB write before network call]
+│   │
+│   ├── 5c. Build GKS payload:
 │   │       record_type        ← gksCaptureType(capture_kind)  [lowercase]
 │   │       edge_id            ← delta.edge_id
 │   │       content_sha256     ← records.content_sha256
@@ -60,9 +65,9 @@ runSync()
 │   │       title, content, tags, importance, classification, life_areas
 │   │       (calendar fields omitted — edge-only)
 │   │
-│   ├── 5c. POST /api/v1/records  (via fetchWithReauth)
+│   ├── 5d. POST /api/v1/records  (via fetchWithReauth)
 │   │
-│   ├── 5d. Handle response (see Section 4)
+│   ├── 5e. Handle response (see Section 4)
 │   │       201 → acknowledgeDelta + update records.gks_id + uploadAttachments()
 │   │       409 EDGE_DUPLICATE → acknowledgeDelta(extracted record_id) + uploadAttachments()
 │   │       400 / 422 → rejectDelta(error) — continue to next delta
@@ -70,7 +75,7 @@ runSync()
 │   │       Network error → resetToPending — STOP remaining deltas this run
 │   │       Auth fail after re-auth → emit session_expired — STOP sync
 │   │
-│   └── 5e. uploadAttachments(edge_id, gks_record_id)  [on ack only]
+│   └── 5f. uploadAttachments(edge_id, gks_record_id)  [on ack only]
 │           For each attachment where sync_status = 'PENDING':
 │             POST multipart to /api/v1/attachments/workflow/NEW_ENTRY
 │             Compare response.sha256 vs local sha256

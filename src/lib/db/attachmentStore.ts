@@ -120,23 +120,29 @@ export async function unlinkAttachment(
     edge_attachment_id
   );
 
-  if (refCount && refCount.n === 0) {
-    const delta = db.getFirstSync<{ seq: number }>(
-      `SELECT seq FROM delta_log
-       WHERE edge_id = ? AND operation = 'DELETE'
-       ORDER BY seq DESC LIMIT 1`,
-      edge_id
-    );
+  if (!refCount || refCount.n > 0) return;
 
-    // ponytail: mark pending_delete; sync engine purges blob after GKS ack
+  // A4 fix: only defer purge if the parent record is being deleted (DELETE delta exists).
+  // Removing an attachment from a live record has no DELETE delta to wait for —
+  // purge the blob immediately once the ref count hits zero.
+  const deleteDelta = db.getFirstSync<{ seq: number }>(
+    `SELECT seq FROM delta_log
+     WHERE edge_id = ? AND operation = 'DELETE'
+     ORDER BY seq DESC LIMIT 1`,
+    edge_id
+  );
+
+  if (deleteDelta) {
     db.runSync(
       `UPDATE attachments
-       SET pending_delete = 1,
-           delete_delta_seq = ?
+       SET pending_delete = 1, delete_delta_seq = ?
        WHERE edge_attachment_id = ?`,
-      delta?.seq ?? null,
+      deleteDelta.seq,
       edge_attachment_id
     );
+  } else {
+    // Live record — purge blob now, no GKS ack to wait for
+    await purgeAttachment(edge_attachment_id);
   }
 }
 
