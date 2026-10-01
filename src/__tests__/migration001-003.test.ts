@@ -16,8 +16,8 @@ function appliedVersions(): number[] {
 }
 
 describe('schema_migrations', () => {
-  test('all three migrations recorded', () => {
-    expect(appliedVersions()).toEqual([1, 2, 3]);
+  test('all four migrations recorded', () => {
+    expect(appliedVersions()).toEqual([1, 2, 3, 4]);
   });
 });
 

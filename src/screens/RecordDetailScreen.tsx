@@ -133,11 +133,13 @@ export default function RecordDetailScreen({ navigation, route }: Props) {
   }
 
   function showMenu() {
-    Alert.alert('Record options', undefined, [
-      { text: 'Change type', onPress: () => setShowTypePicker(true) },
-      { text: 'Delete', style: 'destructive', onPress: handleDelete },
-      { text: 'Cancel', style: 'cancel' },
-    ]);
+    const options: Parameters<typeof Alert.alert>[2] = [];
+    if (!record.gks_id) {
+      options.push({ text: 'Change type', onPress: () => setShowTypePicker(true) });
+    }
+    options.push({ text: 'Delete', style: 'destructive', onPress: handleDelete });
+    options.push({ text: 'Cancel', style: 'cancel' });
+    Alert.alert('Record options', record.gks_id ? 'Type is locked after sync.' : undefined, options);
   }
 
   return (

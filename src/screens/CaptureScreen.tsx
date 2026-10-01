@@ -87,9 +87,8 @@ export default function CaptureScreen({ navigation, route }: Props) {
     setSaving(true);
 
     const now = new Date();
-    const contentFinal = captureKind === 'EVENT'
-      ? `**Event:** ${eventStart.toISOString()}${eventEnd ? ` – ${eventEnd.toISOString()}` : ''}\n\n${content}`
-      : content;
+    // EVENT: dates go into columns (envelope.event), NOT injected into body (contract §4)
+    const contentFinal = content;
 
     const sha = await sha256String(contentFinal);
     const edge_id = uuidv7();
@@ -133,6 +132,8 @@ export default function CaptureScreen({ navigation, route }: Props) {
       native_calendar_event_id: nativeCalendarEventId,
       has_calendar_entry: nativeCalendarEventId !== null,
       reminder_minutes: nativeCalendarEventId !== null ? reminderMinutes : null,
+      event_start: captureKind === 'EVENT' ? eventStart.toISOString() : null,
+      event_end: captureKind === 'EVENT' && eventEnd ? eventEnd.toISOString() : null,
     });
 
     telemetry.action('record_save', { type: recordType, capture_kind: captureKind });

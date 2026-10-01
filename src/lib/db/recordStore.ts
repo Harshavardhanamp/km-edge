@@ -25,6 +25,9 @@ type RecordRow = {
   deleted_at: string | null;
   sync_status: string;
   content_sha256: string;
+  synced_content_sha256: string | null;
+  event_start: string | null;
+  event_end: string | null;
   native_calendar_event_id: string | null;
   has_calendar_entry: number;
   reminder_minutes: number | null;
@@ -62,6 +65,8 @@ export function createRecord(
     native_calendar_event_id?: string | null;
     has_calendar_entry?: boolean;
     reminder_minutes?: number | null;
+    event_start?: string | null;
+    event_end?: string | null;
   }
 ): void {
   db.withTransactionSync(() => {
@@ -70,8 +75,9 @@ export function createRecord(
         edge_id, gks_id, schema_version, type, capture_kind, title, content,
         created, author, classification, importance, tags, life_areas, place,
         about, relationships, captured_at, sync_status, content_sha256,
-        native_calendar_event_id, has_calendar_entry, reminder_minutes
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        native_calendar_event_id, has_calendar_entry, reminder_minutes,
+        event_start, event_end
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       record.edge_id,
       record.gks_id,
       record.schema_version,
@@ -93,7 +99,9 @@ export function createRecord(
       record.content_sha256,
       record.native_calendar_event_id ?? null,
       record.has_calendar_entry ? 1 : 0,
-      record.reminder_minutes ?? null
+      record.reminder_minutes ?? null,
+      record.event_start ?? null,
+      record.event_end ?? null
     );
 
     const attachmentRows = db.getAllSync<{ edge_attachment_id: string }>(
@@ -315,4 +323,21 @@ export function getCalendarFields(edge_id: string): CalendarFields | null {
     has_calendar_entry: row.has_calendar_entry === 1,
     reminder_minutes: row.reminder_minutes,
   };
+}
+
+// Mark a record deleted locally without writing a delta — used when the sync
+// engine learns GKS already deleted it (EDGE_RECORD_DELETED response).
+export function localSoftDelete(edge_id: string, reason: string): void {
+  db.runSync(
+    `UPDATE records SET is_deleted = 1, deleted_at = ?, sync_status = 'REJECTED'
+     WHERE edge_id = ? AND is_deleted = 0`,
+    new Date().toISOString(),
+    edge_id
+  );
+  db.runSync(
+    `UPDATE delta_log SET status = 'REJECTED', gks_error = ?
+     WHERE edge_id = ? AND status IN ('PENDING', 'IN_FLIGHT')`,
+    reason,
+    edge_id
+  );
 }
