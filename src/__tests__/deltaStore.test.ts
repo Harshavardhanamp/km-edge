@@ -6,6 +6,7 @@ import {
   rejectDelta,
   resetInFlightToPending,
   resetDeltaToPending,
+  bumpRetry,
 } from '../lib/db/deltaStore';
 import { db } from '../lib/db/index';
 
@@ -105,7 +106,7 @@ describe('resetInFlightToPending', () => {
 });
 
 describe('resetDeltaToPending', () => {
-  test('resets single delta to PENDING and increments retry_count', () => {
+  test('resets single delta to PENDING and clears gks_error (does not increment retry_count)', () => {
     const seq = insertDelta();
     markInFlight(seq);
     resetDeltaToPending(seq);
@@ -113,7 +114,29 @@ describe('resetDeltaToPending', () => {
       `SELECT status, retry_count, gks_error FROM delta_log WHERE seq = ?`, seq
     );
     expect(row?.status).toBe('PENDING');
-    expect(row?.retry_count).toBe(1);
+    expect(row?.retry_count).toBe(0);
     expect(row?.gks_error).toBeNull();
+  });
+});
+
+describe('bumpRetry', () => {
+  test('increments retry_count without changing status', () => {
+    const seq = insertDelta();
+    bumpRetry(seq);
+    const row = db.getFirstSync<{ status: string; retry_count: number }>(
+      `SELECT status, retry_count FROM delta_log WHERE seq = ?`, seq
+    );
+    expect(row?.status).toBe('PENDING');
+    expect(row?.retry_count).toBe(1);
+  });
+
+  test('increments retry_count cumulatively', () => {
+    const seq = insertDelta();
+    bumpRetry(seq);
+    bumpRetry(seq);
+    const row = db.getFirstSync<{ retry_count: number }>(
+      `SELECT retry_count FROM delta_log WHERE seq = ?`, seq
+    );
+    expect(row?.retry_count).toBe(2);
   });
 });
