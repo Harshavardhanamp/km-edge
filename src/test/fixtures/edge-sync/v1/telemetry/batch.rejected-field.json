@@ -12,10 +12,12 @@
     "body": {
       "events": [
         {
-          "event_type": "RECORD_VIEWED",
-          "edge_id": "01927c4a-0000-7000-8000-000000000002",
-          "occurred_at": "2026-09-30T09:01:00Z",
-          "unknown_field_xyz": "should be rejected"
+          "event": "sync_run",
+          "at": "2026-09-30T09:01:00Z",
+          "result": "completed",
+          "duration_bucket": "lt5s",
+          "user_id": "usr-001",
+          "screen": "HomeScreen"
         }
       ]
     }
@@ -24,8 +26,15 @@
     "status": 422,
     "body": {
       "code": "EDGE_VALIDATION",
-      "detail": "unknown field: unknown_field_xyz"
+      "details": {
+        "fields": [
+          "events.0.sync_run.screen",
+          "events.0.sync_run.user_id"
+        ]
+      }
     }
   },
-  "preconditions": ["server enforces strict field validation on telemetry events"]
+  "preconditions": [
+    "closed vocabulary: client-supplied identity and any field outside contract §7 are rejected; values are never echoed"
+  ]
 }

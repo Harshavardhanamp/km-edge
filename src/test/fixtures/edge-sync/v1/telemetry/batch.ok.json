@@ -12,14 +12,36 @@
     "body": {
       "events": [
         {
-          "event_type": "RECORD_VIEWED",
-          "edge_id": "01927c4a-0000-7000-8000-000000000002",
-          "occurred_at": "2026-09-30T09:01:00Z"
+          "event": "sync_run",
+          "at": "2026-09-30T09:01:00Z",
+          "result": "completed",
+          "duration_bucket": "lt5s",
+          "counts": {
+            "created": 3,
+            "updated": 1,
+            "deleted": 0,
+            "attachments": 2,
+            "rejected": 0
+          }
         },
         {
-          "event_type": "SEARCH_PERFORMED",
-          "query_length": 12,
-          "occurred_at": "2026-09-30T09:02:00Z"
+          "event": "sync_result",
+          "at": "2026-09-30T09:01:00Z",
+          "result": "rejected",
+          "category": "EDGE_TYPE_LOCKED"
+        },
+        {
+          "event": "error",
+          "at": "2026-09-30T09:01:01Z",
+          "category": "network"
+        },
+        {
+          "event": "capture_count",
+          "at": "2026-09-30T09:01:01Z",
+          "by_type": {
+            "JOURNAL": 12,
+            "EVENT": 3
+          }
         }
       ]
     }
@@ -27,8 +49,11 @@
   "response": {
     "status": 200,
     "body": {
-      "accepted": 2
+      "contract_version": 1,
+      "accepted": 4
     }
   },
-  "preconditions": ["authenticated as usr-001"]
+  "preconditions": [
+    "authenticated as usr-001; identity and device are taken from the bearer session"
+  ]
 }
