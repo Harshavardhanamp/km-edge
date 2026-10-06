@@ -14,8 +14,11 @@
     "body": {
       "state": "DELETION_REQUESTED",
       "edge_id": "01927c4a-0000-7000-8000-000000000002",
-      "gks_id": "KNOW-000042"
+      "gks_id": "KNOW-000042",
+      "contract_version": 1
     }
   },
-  "preconditions": ["record 01927c4a-0000-7000-8000-000000000002 has been resolved to KNOW-000042"]
+  "preconditions": [
+    "record 01927c4a-0000-7000-8000-000000000002 has been resolved to KNOW-000042"
+  ]
 }

@@ -13,8 +13,12 @@
     "status": 200,
     "body": {
       "state": "DELETED",
-      "edge_id": "01927c4a-0000-7000-8000-000000000002"
+      "edge_id": "01927c4a-0000-7000-8000-000000000002",
+      "contract_version": 1,
+      "gks_id": "KNOW-000042"
     }
   },
-  "preconditions": ["record 01927c4a-0000-7000-8000-000000000002 was already deleted — idempotent repeat"]
+  "preconditions": [
+    "record 01927c4a-0000-7000-8000-000000000002 was already deleted — idempotent repeat"
+  ]
 }

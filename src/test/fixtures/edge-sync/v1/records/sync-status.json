@@ -12,15 +12,23 @@
   "response": {
     "status": 200,
     "body": {
+      "contract_version": 1,
+      "user_id": "usr-001",
       "records": [
         {
           "edge_id": "01927c4a-0000-7000-8000-000000000002",
           "gks_id": "KNOW-000042",
           "state": "RESOLVED",
-          "updated_at": "2026-09-30T09:00:00Z"
+          "updated_at": "2026-09-30T09:00:00Z",
+          "content_sha256": "bf8e4578ea70a21e1e5354c3dd7304014e20abfa0e17777c7da35b87bf9d84db"
         }
-      ]
+      ],
+      "synced_record_count": 1,
+      "server_time": "2026-09-30T09:05:00Z"
     }
   },
-  "preconditions": ["authenticated as usr-001", "at least one record synced by this device"]
+  "preconditions": [
+    "authenticated as usr-001",
+    "at least one record synced by this device"
+  ]
 }

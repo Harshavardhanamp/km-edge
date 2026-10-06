@@ -11,10 +11,12 @@
     },
     "body": {
       "record_type": "NOTE",
-      "content": "Avyu started school today at Vidyashilp in Bangalore",
-      "content_sha256": "a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2",
-      "base_gks_id": "KNOW-000042",
-      "tags": ["family"]
+      "content": "Avyu started school today at Vidyashilp in Bangalore — as a note",
+      "content_sha256": "2d04ffca7b6f2ab8ecbf410f25bc1966bffe815fa58c45d61a5fcaa4c32b057d",
+      "tags": [
+        "family"
+      ],
+      "base_content_sha256": "bf8e4578ea70a21e1e5354c3dd7304014e20abfa0e17777c7da35b87bf9d84db"
     }
   },
   "response": {
@@ -24,5 +26,7 @@
       "original_type": "JOURNAL"
     }
   },
-  "preconditions": ["record was originally created as JOURNAL; record_type may not change after creation"]
+  "preconditions": [
+    "record was created as JOURNAL; record_type may not change after creation"
+  ]
 }

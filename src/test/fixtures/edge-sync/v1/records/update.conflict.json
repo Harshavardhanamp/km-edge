@@ -11,9 +11,12 @@
     },
     "body": {
       "content": "Avyu started school today at Vidyashilp in Bangalore — stale update",
-      "content_sha256": "a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2",
-      "base_gks_id": "KNOW-000042",
-      "tags": ["family"]
+      "content_sha256": "a7e0eb5ab2d365c823898f9444d10f0d89d9293b82cff58b6a977a20cf1daf66",
+      "tags": [
+        "family"
+      ],
+      "record_type": "JOURNAL",
+      "base_content_sha256": "bf8e4578ea70a21e1e5354c3dd7304014e20abfa0e17777c7da35b87bf9d84db"
     }
   },
   "response": {
@@ -21,9 +24,14 @@
     "body": {
       "state": "CONFLICT",
       "edge_id": "01927c4a-0000-7000-8000-000000000002",
-      "current_gks_id": "KNOW-000043",
-      "base_gks_id": "KNOW-000042"
+      "contract_version": 1,
+      "content_sha256": "a7e0eb5ab2d365c823898f9444d10f0d89d9293b82cff58b6a977a20cf1daf66",
+      "gks_id": "KNOW-000044",
+      "head_before": "KNOW-000043"
     }
   },
-  "preconditions": ["record head has advanced to KNOW-000043 but client sent base_gks_id KNOW-000042"]
+  "preconditions": [
+    "head has advanced to KNOW-000043 (content_sha256 != base_content_sha256)",
+    "phone content stored as new version KNOW-000044 linked UPDATES and flagged CONFLICT in Review → From phone"
+  ]
 }
