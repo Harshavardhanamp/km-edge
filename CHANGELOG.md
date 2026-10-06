@@ -17,6 +17,7 @@ Requires Kashyap's Knowledge 2.1.0. Requirements: REQ-0013. Decisions: ADR-0011â
 - **Release fixes (K7):**
   - File-system calls use `expo-file-system/legacy`; with this SDK, the main entry's legacy methods throw at runtime.
   - `package.json` now declares every native module the app imports (SDK-57 versions from `expo install`).
+  - Attachment hashes are SHA-256 of the raw file bytes, as GKS verifies them. V1 hashed the base64 text, which would have failed every upload with `EDGE_CHECKSUM_MISMATCH`. Uploads recompute the hash, so files saved by V1 still sync.
   - App version is 2.0.0.
 
 ## 1.0.0 â€” V1 beta (tag: `v1.0.0`)

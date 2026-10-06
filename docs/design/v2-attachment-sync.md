@@ -176,6 +176,8 @@ The JSON `Content-Type` default from `edgeHeaders` is removed so `uploadAsync` c
 
 GKS recomputes SHA-256 and answers `400 EDGE_CHECKSUM_MISMATCH` if it differs from the `sha256` part. The phone no longer compares hashes itself.
 
+The `sha256` sent is the SHA-256 of the file's raw bytes (`lib/crypto.sha256File`). The phone recomputes it just before each upload, so rows saved by V1, which held a hash of the base64 text, are corrected rather than rejected (K7, 2026-10-06). The blob path keeps whatever hash the file was saved under; it is only a location.
+
 ### 4.4 DB Updates on Success
 
 `201 ACCEPTED` or `200 ALREADY_SYNCED` (replay — same hash already bound):

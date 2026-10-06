@@ -8,7 +8,8 @@ import { uploadAttachment } from '../lib/gksClient';
 import { runSync } from '../lib/sync/syncEngine';
 import { validateFile, validateRecordLimits } from '../lib/attachments/validate';
 import { __reset as resetSecureStore, setItemAsync } from 'expo-secure-store';
-import { __reset as resetFs, __setUpload, __setFileExists } from 'expo-file-system/legacy';
+import { __reset as resetFs, __setUpload, __setFileExists, __setFileBase64 } from 'expo-file-system/legacy';
+import { createHash } from 'crypto';
 import { __setConnected } from 'expo-network';
 
 const BASE = 'http://gks.test';
@@ -164,6 +165,18 @@ describe('runSync — attachment rows', () => {
     upload(500, edgeError('EDGE_SERVER_ERROR'));
     await runSync();
     expect(attachmentRow()).toMatchObject({ sync_status: 'PENDING', sync_error: null });
+  });
+
+  test('upload sends the raw-bytes hash and corrects a V1 base64-text hash on the row', async () => {
+    insertSyncedRecordWithAttachment(); // row carries a V1-style hash ('a' × 64)
+    const bytes = Buffer.from('ffd8ffe04b4d2d456467652050362066697874757265206a70656720626f6479', 'hex');
+    __setFileBase64('/mock-docs/attachments/att-1.jpg', bytes.toString('base64'));
+    const raw = createHash('sha256').update(bytes).digest('hex');
+    routeFetch();
+    const calls = upload(201, accepted());
+    await runSync();
+    expect(calls[0].opts.parameters.sha256).toBe(raw);
+    expect(db.getFirstSync<{ sha256: string }>(`SELECT sha256 FROM attachments WHERE edge_attachment_id = 'att-1'`)!.sha256).toBe(raw);
   });
 
   test('network failure → stays PENDING', async () => {

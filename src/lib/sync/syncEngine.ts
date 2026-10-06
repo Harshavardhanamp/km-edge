@@ -24,6 +24,7 @@ import {
   uploadAttachment,
 } from '../gksClient';
 import { buildEnvelope, buildUpdateEnvelope } from './envelope';
+import { sha256File } from '../crypto';
 import { mapError } from '../errors/edgeErrorMap';
 import { telemetry, buildTelemetryBatch, markTelemetryTransmitted, type SyncRunResult } from '../telemetry';
 import { get, remove, set, KEYS } from '../secureStore';
@@ -79,9 +80,22 @@ async function uploadAttachments(baseUrl: string, edge_id: string): Promise<void
     const info = await FileSystem.getInfoAsync(fullPath);
     if (!info.exists) continue;
 
+    // Contract §6: the hash of the raw bytes. Rows saved by V1 carry a base64-text hash; correct them here.
+    let sha256 = att.sha256;
+    try {
+      sha256 = await sha256File(fullPath);
+      if (sha256 !== att.sha256) {
+        try {
+          db.runSync(`UPDATE attachments SET sha256 = ? WHERE edge_attachment_id = ?`, sha256, att.edge_attachment_id);
+        } catch { /* the same bytes are already stored under another row; send the correct hash anyway */ }
+      }
+    } catch {
+      continue; // unreadable file: stays PENDING
+    }
+
     const res = await uploadAttachment(baseUrl, edge_id, {
       edge_attachment_id: att.edge_attachment_id,
-      sha256: att.sha256,
+      sha256,
       original_filename: att.original_filename,
       mime_type: att.mime_type,
       fileUri: fullPath,

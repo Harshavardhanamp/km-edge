@@ -97,6 +97,7 @@ Per ADR-0006: follow the steps in order; any deviation is surfaced before procee
 - The V1 `gks_password_enc` key was never cleared after the K2 upgrade. `purgeLegacySecrets()` now runs at launch.
 - A 426 on a record call rejected every pending record. It now stops the run with the change kept pending, as design §5 says, and a completed, verified run clears the banner.
 - Needs attention gained one action per item: Edit or Open record (checklist 6.4).
+- `sha256File` hashed the file's base64 text (a V1 shortcut), so GKS would have rejected every attachment as `EDGE_CHECKSUM_MISMATCH`. It now hashes the raw bytes with `Crypto.digest`; the result matches the `upload.ok` fixture. Uploads recompute the hash and correct V1 rows.
 
 GKS `a547310` adds the scratch-only `GKS_EDGE_CONTRACT_VERSIONS` override (row 6.3) and dismissed-label chips (row 2.7). `app.json` is version 2.0.0, and `CHANGELOG.md` has the 2.0.0 release-candidate entry. The run procedure is in `docs/testing/device-acceptance-runbook.md`. Tag `v2.0.0` after the checklist passes.
 
