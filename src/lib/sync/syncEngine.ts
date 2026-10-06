@@ -1,4 +1,4 @@
-import * as FileSystem from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
 import * as Network from 'expo-network';
 import { db } from '../db/index';
 import { getRecord, localSoftDelete } from '../db/recordStore';
@@ -26,7 +26,7 @@ import {
 import { buildEnvelope, buildUpdateEnvelope } from './envelope';
 import { mapError } from '../errors/edgeErrorMap';
 import { telemetry, buildTelemetryBatch, markTelemetryTransmitted, type SyncRunResult } from '../telemetry';
-import { get, set, KEYS } from '../secureStore';
+import { get, remove, set, KEYS } from '../secureStore';
 import { EDGE_ERROR_CATALOGUE } from '../contract';
 
 export type SyncResult = {
@@ -35,6 +35,11 @@ export type SyncResult = {
   skipped: number;
   telemetryFlushed: number;
 };
+
+// Codes that end the run with the change kept PENDING: the session is gone, or the server refuses this
+// app's contract version (426; the Home banner explains it). Never a per-record rejection (design §5).
+// A 426 stop reports sync_run result aborted_auth: the contract's closed result set has no separate value.
+const STOP_CODES = new Set(['EDGE_SESSION_EXPIRED', 'EDGE_SESSION_REVOKED', 'EDGE_CONTRACT_UNSUPPORTED']);
 
 // Per-run health, written as telemetry after the run (sent with the next run's batch).
 let runErrors: string[] = [];
@@ -85,7 +90,7 @@ async function uploadAttachments(baseUrl: string, edge_id: string): Promise<void
     if ('network' in res) break; // stay PENDING; next run retries
     if (!res.ok) {
       const { code } = res.error;
-      if (code === 'EDGE_SESSION_EXPIRED' || code === 'EDGE_SESSION_REVOKED' || code === 'EDGE_CONTRACT_UNSUPPORTED') break;
+      if (STOP_CODES.has(code)) break;
       if (ATTACHMENT_REJECTIONS.has(code)) {
         db.runSync(
           `UPDATE attachments SET sync_status = 'FAILED', sync_error = ? WHERE edge_attachment_id = ?`,
@@ -138,7 +143,7 @@ async function syncDelta(baseUrl: string, delta: DeltaEntry): Promise<'ok' | 'fa
     }
     if (!result.ok) {
       const { code } = result.error;
-      if (code === 'EDGE_SESSION_EXPIRED' || code === 'EDGE_SESSION_REVOKED') {
+      if (STOP_CODES.has(code)) {
         resetDeltaToPending(delta.seq);
         stopReason = 'aborted_auth';
         return 'stop';
@@ -212,7 +217,7 @@ async function syncDelta(baseUrl: string, delta: DeltaEntry): Promise<'ok' | 'fa
       }
       if (!result.ok) {
         const { code } = result.error;
-        if (code === 'EDGE_SESSION_EXPIRED' || code === 'EDGE_SESSION_REVOKED') {
+        if (STOP_CODES.has(code)) {
           resetDeltaToPending(delta.seq);
           stopReason = 'aborted_auth';
           return 'stop';
@@ -265,7 +270,7 @@ async function syncDelta(baseUrl: string, delta: DeltaEntry): Promise<'ok' | 'fa
   }
   if (!result.ok) {
     const { code } = result.error;
-    if (code === 'EDGE_SESSION_EXPIRED' || code === 'EDGE_SESSION_REVOKED') {
+    if (STOP_CODES.has(code)) {
       resetDeltaToPending(delta.seq);
       stopReason = 'aborted_auth';
       return 'stop';
@@ -429,7 +434,10 @@ export async function runSync(): Promise<SyncResult> {
   const verified = await verifyChecksums(baseUrl);
 
   // REQ-0013 C6.2: only a run that finished and verified counts as "synced"; otherwise Home keeps the previous value.
-  if (verified && stopReason === 'completed') await set(KEYS.LAST_SYNCED_AT, new Date().toISOString());
+  if (verified && stopReason === 'completed') {
+    await set(KEYS.LAST_SYNCED_AT, new Date().toISOString());
+    await remove(KEYS.CONTRACT_BLOCK); // the server accepted every call, so the update banner no longer applies
+  }
 
   // Device health for this run; queued now and sent with the next run's batch
   // (GKS records last-sync time itself from the sync-status call above).

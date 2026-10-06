@@ -91,6 +91,15 @@ Per ADR-0006: follow the steps in order; any deviation is surfaced before procee
 2. Execute `docs/testing/device-acceptance-checklist.md` on one iOS and one Android device; record results in `docs/testing/device-acceptance-2026-XX-XX.md`.
 3. `CHANGELOG.md` 2.0.0; `app.json` version `2.0.0`; tag `v2.0.0`; push.
 
+**Status (2026-10-06):** prepared; the device run is pending. Pre-device audit against the definition of done and the checklist found and fixed:
+- File-system calls imported the legacy API from `expo-file-system`, whose legacy methods throw at runtime on SDK 54+. They now import `expo-file-system/legacy`, which Jest maps to the same mock.
+- `package.json` did not declare seven modules the app imports (`expo-sqlite`, `expo-crypto`, `expo-camera`, `expo-image-picker`, `expo-image-manipulator`, `expo-constants`, `@react-native-community/datetimepicker`). They are added at SDK-57 versions via `expo install`.
+- The V1 `gks_password_enc` key was never cleared after the K2 upgrade. `purgeLegacySecrets()` now runs at launch.
+- A 426 on a record call rejected every pending record. It now stops the run with the change kept pending, as design §5 says, and a completed, verified run clears the banner.
+- Needs attention gained one action per item: Edit or Open record (checklist 6.4).
+
+GKS `a547310` adds the scratch-only `GKS_EDGE_CONTRACT_VERSIONS` override (row 6.3) and dismissed-label chips (row 2.7). `app.json` is version 2.0.0, and `CHANGELOG.md` has the 2.0.0 release-candidate entry. The run procedure is in `docs/testing/device-acceptance-runbook.md`. Tag `v2.0.0` after the checklist passes.
+
 ## Definition of done
 
 - [ ] No request to `/api/v1/records`, `/sync/status`, `/telemetry/events`, `/attachments/workflow` remains in `src/lib`.

@@ -9,7 +9,7 @@ import {
 } from '../lib/db/attachmentStore';
 import { createRecord } from '../lib/db/recordStore';
 import { db } from '../lib/db/index';
-import { __setFileExists, __reset as resetFs, documentDirectory } from 'expo-file-system';
+import { __setFileExists, __reset as resetFs, documentDirectory } from 'expo-file-system/legacy';
 
 function makeRecord(edge_id = 'rec-1') {
   return {

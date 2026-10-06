@@ -4,6 +4,7 @@ import { ErrorUtils } from 'react-native';
 import ErrorBoundary from './components/ErrorBoundary';
 import { AuthProvider } from './context/AuthContext';
 import { telemetry } from './lib/telemetry';
+import { purgeLegacySecrets } from './lib/secureStore';
 import RootNavigator from './navigation/RootNavigator';
 
 // Catch unhandled async/runtime errors that bypass ErrorBoundary
@@ -11,6 +12,9 @@ import RootNavigator from './navigation/RootNavigator';
 ErrorUtils.setGlobalHandler(() => {
   telemetry.error('other');
 });
+
+// First launch after upgrading from V1: remove the stored GKS password (REQ-0013 C7).
+purgeLegacySecrets().catch(() => {});
 
 export default function App() {
   return (

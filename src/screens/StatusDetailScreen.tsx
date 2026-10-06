@@ -34,6 +34,11 @@ export default function StatusDetailScreen({ navigation }: any) {
     }
   }
 
+  function openRecord(edge_id: string) {
+    // StatusDetail sits above the tabs; RecordDetail lives in the Home stack.
+    navigation.navigate('MainTabs', { screen: 'HomeTab', params: { screen: 'RecordDetail', params: { edge_id } } });
+  }
+
   async function handleRetry(seq: number) {
     retryDelta(seq);
     await sync();
@@ -98,6 +103,16 @@ export default function StatusDetailScreen({ navigation }: any) {
                 <Text style={styles.rejectedTitle} numberOfLines={1}>{item.title}</Text>
                 <Text style={styles.rejectedError}>{item.sentence}</Text>
               </View>
+              {item.openLabel && item.edgeId && (
+                <TouchableOpacity
+                  style={styles.retryBtn}
+                  onPress={() => openRecord(item.edgeId!)}
+                  accessibilityRole="button"
+                  accessibilityLabel={`${item.openLabel}: ${item.title}`}
+                >
+                  <Text style={styles.retryBtnText}>{item.openLabel}</Text>
+                </TouchableOpacity>
+              )}
               {item.retrySeq !== null && (
                 <TouchableOpacity
                   style={[styles.retryBtn, syncing && styles.syncBtnDisabled]}

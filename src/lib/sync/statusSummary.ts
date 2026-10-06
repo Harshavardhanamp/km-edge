@@ -3,7 +3,7 @@
  * Pure DB/JSON reads so the wording is testable without rendering.
  */
 import { db } from '../db/index';
-import { mapError } from '../errors/edgeErrorMap';
+import { mapError, type ErrorAction } from '../errors/edgeErrorMap';
 
 export interface AttentionItem {
   key: string;
@@ -11,6 +11,23 @@ export interface AttentionItem {
   sentence: string;
   /** Delta seq to reset on Retry; set only when the code is retryable (C6.1). */
   retrySeq: number | null;
+  /** The record to open when the fix happens there (edit text, remove a file, change the type back). */
+  edgeId: string | null;
+  /** Button label for opening that record; null when there is nothing to do on the phone. */
+  openLabel: 'Edit' | 'Open record' | null;
+}
+
+// Contract §8 phone actions that are carried out on the record screen. At most one action per item (C6.1).
+const OPEN_LABEL: Partial<Record<ErrorAction, 'Edit' | 'Open record'>> = {
+  edit: 'Edit',
+  remove: 'Open record',
+  revert_type: 'Open record',
+};
+
+function openAction(code: string | null, edgeId: string): Pick<AttentionItem, 'edgeId' | 'openLabel'> {
+  const entry = mapError(code ?? '');
+  const label = entry.retryable ? undefined : OPEN_LABEL[entry.action];
+  return label ? { edgeId, openLabel: label } : { edgeId: null, openLabel: null };
 }
 
 export interface StatusSummary {
@@ -35,12 +52,12 @@ export function loadStatusSummary(): StatusSummary {
     `SELECT COUNT(*) AS n FROM records WHERE gks_id IS NOT NULL AND is_deleted = 0`
   )?.n ?? 0;
 
-  type RejectedRow = { seq: number; title: string; gks_error: string | null };
-  type FailedFileRow = { edge_attachment_id: string; original_filename: string; sync_error: string | null };
+  type RejectedRow = { seq: number; edge_id: string; title: string; gks_error: string | null; is_deleted: number };
+  type FailedFileRow = { edge_attachment_id: string; edge_id: string; original_filename: string; sync_error: string | null };
 
   // A rejection stops needing attention once a later change for the same record exists (e.g. after Edit).
   const rejected = db.getAllSync<RejectedRow>(
-    `SELECT d.seq, r.title, d.gks_error
+    `SELECT d.seq, d.edge_id, r.title, d.gks_error, r.is_deleted
      FROM delta_log d
      JOIN records r ON r.edge_id = d.edge_id
      WHERE d.status = 'REJECTED'
@@ -49,10 +66,11 @@ export function loadStatusSummary(): StatusSummary {
   );
 
   const failedFiles = db.getAllSync<FailedFileRow>(
-    `SELECT DISTINCT a.edge_attachment_id, a.original_filename, a.sync_error
+    `SELECT a.edge_attachment_id, MIN(ra.edge_id) AS edge_id, a.original_filename, a.sync_error
      FROM attachments a
      JOIN record_attachments ra ON ra.edge_attachment_id = a.edge_attachment_id
      WHERE a.sync_status = 'FAILED'
+     GROUP BY a.edge_attachment_id
      ORDER BY a.edge_attachment_id ASC`
   );
 
@@ -62,12 +80,15 @@ export function loadStatusSummary(): StatusSummary {
       title: d.title,
       sentence: sentenceFor(d.gks_error),
       retrySeq: mapError(d.gks_error ?? '').retryable ? d.seq : null,
+      // A record removed on desktop is hidden on the phone; there is nothing to open.
+      ...(d.is_deleted ? { edgeId: null, openLabel: null } : openAction(d.gks_error, d.edge_id)),
     })),
     ...failedFiles.map((a: FailedFileRow) => ({
       key: `file-${a.edge_attachment_id}`,
       title: a.original_filename,
       sentence: sentenceFor(a.sync_error),
-      retrySeq: null, // file problems are fixed by removing the file
+      retrySeq: null, // file problems are fixed by removing the file on the record
+      ...openAction(a.sync_error, a.edge_id),
     })),
   ];
 

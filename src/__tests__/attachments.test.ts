@@ -8,7 +8,7 @@ import { uploadAttachment } from '../lib/gksClient';
 import { runSync } from '../lib/sync/syncEngine';
 import { validateFile, validateRecordLimits } from '../lib/attachments/validate';
 import { __reset as resetSecureStore, setItemAsync } from 'expo-secure-store';
-import { __reset as resetFs, __setUpload, __setFileExists } from 'expo-file-system';
+import { __reset as resetFs, __setUpload, __setFileExists } from 'expo-file-system/legacy';
 import { __setConnected } from 'expo-network';
 
 const BASE = 'http://gks.test';

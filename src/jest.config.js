@@ -13,6 +13,9 @@ module.exports = {
   },
   moduleNameMapper: {
     '^expo-sqlite$': '<rootDir>/__mocks__/expo-sqlite.ts',
+    // SDK 54+: the legacy API (documentDirectory, uploadAsync, getInfoAsync…) lives at expo-file-system/legacy;
+    // the main entry's legacy methods throw at runtime.
+    '^expo-file-system/legacy$': '<rootDir>/__mocks__/expo-file-system.ts',
     '^expo-file-system$': '<rootDir>/__mocks__/expo-file-system.ts',
     '^expo-calendar$': '<rootDir>/__mocks__/expo-calendar.ts',
     '^expo-secure-store$': '<rootDir>/__mocks__/expo-secure-store.ts',

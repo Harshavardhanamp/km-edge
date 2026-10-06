@@ -61,6 +61,17 @@ export async function remove(key: string): Promise<void> {
   await SecureStore.deleteItemAsync(key);
 }
 
+/**
+ * Secrets earlier versions stored and V2 must not keep (REQ-0013 C7: no password on the device).
+ * V1 kept the GKS password encrypted under this key; ADR-0012 replaced it with a bearer token.
+ */
+export const LEGACY_SECRET_KEYS = ['gks_password_enc'] as const;
+
+/** Run on every launch; deleting a missing key is a no-op, so this is idempotent. */
+export async function purgeLegacySecrets(): Promise<void> {
+  await Promise.all(LEGACY_SECRET_KEYS.map((k) => SecureStore.deleteItemAsync(k).catch(() => {})));
+}
+
 /** Generate DEVICE_ID once on first launch; return the existing value thereafter. */
 export async function ensureDeviceId(): Promise<string> {
   const existing = await get(KEYS.DEVICE_ID);

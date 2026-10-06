@@ -2,7 +2,7 @@
   "expo": {
     "name": "KM-Edge",
     "slug": "km-edge",
-    "version": "0.1.0",
+    "version": "2.0.0",
     "scheme": "kmedge",
     "orientation": "portrait",
     "icon": "./assets/icon.png",

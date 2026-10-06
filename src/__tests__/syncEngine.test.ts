@@ -457,3 +457,34 @@ describe('K6 — contract block and unmapped codes', () => {
     expect(JSON.parse(row!.metadata)).toEqual({ category: 'contract' });
   });
 });
+
+describe('K7 — 426 on a record call (checklist 6.3)', () => {
+  const block426 = {
+    ok: false, status: 426,
+    json: () => Promise.resolve({ error: { code: 'EDGE_CONTRACT_UNSUPPORTED', message: 'x', details: { direction: 'client_too_old', supported_contract_versions: [2], client_contract_version: 1 } } }),
+  };
+
+  test('stops the run, keeps the change PENDING, rejects nothing, stores the banner block', async () => {
+    const a = insertRecord({ edge_id: 'edge-426-a' });
+    const b = insertRecord({ edge_id: 'edge-426-b' });
+    insertDelta(a, 'CREATE');
+    insertDelta(b, 'CREATE');
+    mockFetch([capOk(), healthOk(), block426, syncStatusEmpty()]);
+    await runSync();
+    const rows = db.getAllSync<{ status: string }>(`SELECT status FROM delta_log ORDER BY seq`);
+    expect(rows.map((r) => r.status)).toEqual(['PENDING', 'PENDING']);
+    const { getItemAsync } = await import('expo-secure-store');
+    expect(JSON.parse((await getItemAsync('contract_block'))!).details.direction).toBe('client_too_old');
+    expect(await getItemAsync('last_synced_at')).toBeNull();
+  });
+
+  test('a later completed, verified run clears the block even with cached capabilities', async () => {
+    const { setItemAsync, getItemAsync } = await import('expo-secure-store');
+    await setItemAsync('capabilities_json', JSON.stringify({ contract_version: 1, supported_contract_versions: [1], attachments: {}, limits: {} }));
+    await setItemAsync('capabilities_fetched_at', String(Date.now()));
+    await setItemAsync('contract_block', JSON.stringify({ code: 'EDGE_CONTRACT_UNSUPPORTED', details: { direction: 'client_too_old' } }));
+    mockFetch([healthOk(), syncStatusEmpty()]); // capabilities come from the cache
+    await runSync();
+    expect(await getItemAsync('contract_block')).toBeNull();
+  });
+});

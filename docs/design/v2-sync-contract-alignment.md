@@ -141,6 +141,8 @@ SecureStore `KEYS`: remove `GKS_PASSWORD_ENC`; add `EDGE_TOKEN`, `EDGE_TOKEN_EXP
 - `contractBanner()` turns the stored `CONTRACT_BLOCK` into the Home banner. It reads `details.direction` (`client_too_old` / `server_too_old`, contract §8; GKS P8 aligned its implementation to these names). With no direction, or an unreadable block, it shows "Update KM-Edge to keep syncing."
 - `CONTRACT_BLOCK` is cleared after a fresh (uncached) capabilities success. Every 426 stores the same `{code, message, details}` shape.
 - `LAST_SYNCED_AT` is written only after a completed, verified run (C6.2).
+- *(K7)* A 426 on any call stops the run with the change kept `PENDING`, the same as an expired session. A completed, verified run also clears `CONTRACT_BLOCK`.
+- *(K7)* Each Needs attention item has at most one action: **Retry** for retryable codes; **Edit** (opens the record) for `edit`; **Open record** for `remove` and `revert_type`; nothing otherwise, including records removed on desktop.
 - An unmapped code gets the C6.1 fallback sentence and a `contract` telemetry category.
 - Settings → About → "How syncing works" is `HowSyncingScreen` (copy in `src/lib/help/howSyncing.ts`), registered in `SettingsStack`.
 - Status screen labels: "Sync status", "Connection", "Last synced", "Waiting to sync (N)", "Synced N records", "Needs attention (N)", "Sync now".

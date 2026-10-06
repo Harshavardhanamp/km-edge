@@ -9,7 +9,7 @@ import {
 } from '../lib/telemetry';
 import { runSync } from '../lib/sync/syncEngine';
 import { __reset as resetSecureStore, setItemAsync } from 'expo-secure-store';
-import { __reset as resetFs } from 'expo-file-system';
+import { __reset as resetFs } from 'expo-file-system/legacy';
 import { __setConnected } from 'expo-network';
 
 // Exact key sets GKS's strict models accept (api/edge/models.py); anything else is 422.

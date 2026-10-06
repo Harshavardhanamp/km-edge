@@ -1,4 +1,4 @@
-import * as FileSystem from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
 import { sha256File } from '../crypto';
 import {
   saveAttachment,
@@ -55,7 +55,7 @@ export async function addAttachment(
     workUri = compressed.uri;
   }
 
-  const info = await FileSystem.getInfoAsync(workUri, { size: true });
+  const info = await FileSystem.getInfoAsync(workUri);
   const actualSize = (info as any).size ?? file.size;
 
   const sha = await sha256File(workUri);

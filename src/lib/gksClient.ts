@@ -1,4 +1,4 @@
-import * as FileSystem from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
 import { EDGE_CONTRACT_VERSION, edgeHeaders, type Capabilities, type EdgeResult, type LoginResponse, type MeResponse } from './contract';
 import { KEYS, get, remove, set } from './secureStore';
 

@@ -1,4 +1,4 @@
-import * as FileSystem from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
 import React, { useEffect, useState } from 'react';
 import {
   Alert,
@@ -60,7 +60,7 @@ export default function SettingsScreen({ navigation }: any) {
     setRecordCount(row?.n ?? 0);
 
     const blobDir = `${FileSystem.documentDirectory}attachments`;
-    FileSystem.getInfoAsync(blobDir, { size: true })
+    FileSystem.getInfoAsync(blobDir)
       .then((info) => { setUsedBytes((info as any).size ?? 0); })
       .catch(() => {});
 

@@ -107,6 +107,48 @@ describe('Needs attention — wording from fixture codes', () => {
     const [item] = loadStatusSummary().attention;
     expect(item).toMatchObject({ title: 'scan.heic', sentence: 'This file is too large to sync.', retrySeq: null });
   });
+
+  test('a file linked to two records is listed once', () => {
+    const a = insertRecord();
+    insertFailedFile(a, 'shared.pdf', 'EDGE_FILE_TOO_LARGE');
+    const id = db.getFirstSync<{ edge_attachment_id: string }>(`SELECT edge_attachment_id FROM attachments`)!.edge_attachment_id;
+    db.runSync(`INSERT INTO record_attachments (edge_id, edge_attachment_id) VALUES (?, ?)`, insertRecord(), id);
+    expect(loadStatusSummary().attention).toHaveLength(1);
+  });
+});
+
+describe('Needs attention — one action per item (checklist 6.4)', () => {
+  test('too long → Edit opens the record', () => {
+    const edge_id = insertRecord();
+    insertDelta(edge_id, 'REJECTED', 'EDGE_CONTENT_TOO_LONG');
+    expect(loadStatusSummary().attention[0]).toMatchObject({ openLabel: 'Edit', edgeId: edge_id, retrySeq: null });
+  });
+
+  test('type locked → Open record (change the type back there)', () => {
+    const edge_id = insertRecord();
+    insertDelta(edge_id, 'REJECTED', 'EDGE_TYPE_LOCKED');
+    expect(loadStatusSummary().attention[0]).toMatchObject({ openLabel: 'Open record', edgeId: edge_id });
+  });
+
+  test('file problem → Open record on the record carrying the file', () => {
+    const edge_id = insertRecord();
+    insertFailedFile(edge_id, 'virus.exe', 'EDGE_FILE_TYPE_NOT_SUPPORTED');
+    expect(loadStatusSummary().attention[0]).toMatchObject({ openLabel: 'Open record', edgeId: edge_id });
+  });
+
+  test('retryable → Retry only; nothing-to-do codes → no button', () => {
+    insertDelta(insertRecord(), 'REJECTED', 'EDGE_CHECKSUM_MISMATCH');
+    insertDelta(insertRecord(), 'REJECTED', 'EDGE_VALIDATION');
+    const [retry, none] = loadStatusSummary().attention;
+    expect(retry).toMatchObject({ openLabel: null });
+    expect(retry.retrySeq).not.toBeNull();
+    expect(none).toMatchObject({ openLabel: null, retrySeq: null });
+  });
+
+  test('removed on desktop → no action (the record is hidden on the phone)', () => {
+    insertDelta(insertRecord({ is_deleted: 1 }), 'REJECTED', 'EDGE_RECORD_DELETED');
+    expect(loadStatusSummary().attention[0]).toMatchObject({ openLabel: null, edgeId: null, retrySeq: null });
+  });
 });
 
 describe('Waiting to sync / Synced counts', () => {
