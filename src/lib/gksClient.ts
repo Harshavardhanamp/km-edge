@@ -1,6 +1,6 @@
 import * as FileSystem from 'expo-file-system';
 import { EDGE_CONTRACT_VERSION, edgeHeaders, type Capabilities, type EdgeResult, type LoginResponse, type MeResponse } from './contract';
-import { KEYS, get, set } from './secureStore';
+import { KEYS, get, remove, set } from './secureStore';
 
 // Session-invalid event bus — listeners registered by AuthContext.
 type SessionInvalidListener = (code: string) => void;
@@ -101,6 +101,7 @@ export async function capabilities(baseUrl: string): Promise<EdgeResult<Capabili
   if (result.ok) {
     await set(KEYS.CAPABILITIES_JSON, JSON.stringify(result.body));
     await set(KEYS.CAPABILITIES_FETCHED_AT, String(Date.now()));
+    await remove(KEYS.CONTRACT_BLOCK); // server accepted our contract version again (e.g. after an update)
   }
   return result;
 }
@@ -228,6 +229,7 @@ export async function uploadAttachment(baseUrl: string, edgeId: string, att: Att
   if (res.status >= 200 && res.status < 300 && body) return { ok: true, status: res.status, body };
   const code: string = body?.error?.code ?? body?.code ?? 'EDGE_SERVER_ERROR';
   if (res.status === 401) emitSessionInvalid(code);
-  if (res.status === 426) await set(KEYS.CONTRACT_BLOCK, JSON.stringify(body ?? { code }));
+  // Same shape edgeFetchInternal stores: { code, message, details }.
+  if (res.status === 426) await set(KEYS.CONTRACT_BLOCK, JSON.stringify(body?.error ?? body ?? { code }));
   return { ok: false, error: { code, status: res.status, message: body?.error?.message ?? `HTTP ${res.status}`, details: body?.details } };
 }

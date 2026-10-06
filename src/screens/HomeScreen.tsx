@@ -12,6 +12,7 @@ import TypePickerSheet from '../components/TypePickerSheet';
 import { getRecentRecords } from '../lib/db/recordStore';
 import { getUpcomingEvents, requestCalendarPermission, type CalendarEvent } from '../lib/calendar';
 import { KEYS, get } from '../lib/secureStore';
+import { contractBanner } from '../lib/sync/statusSummary';
 import { CAPTURE_TYPES, type CaptureKind, type EdgeRecord, type RecordType } from '../lib/types';
 
 export default function HomeScreen({ navigation }: any) {
@@ -21,6 +22,7 @@ export default function HomeScreen({ navigation }: any) {
   const [showTypePicker, setShowTypePicker] = useState(false);
   const [lastSyncedAt, setLastSyncedAt] = useState<string | null>(null);
   const [gksSyncedCount, setGksSyncedCount] = useState<number | null>(null);
+  const [banner, setBanner] = useState<string | null>(null);
 
   useFocusEffect(
     useCallback(() => {
@@ -31,6 +33,7 @@ export default function HomeScreen({ navigation }: any) {
       });
       get(KEYS.LAST_SYNCED_AT).then(v => setLastSyncedAt(v));
       get(KEYS.GKS_SYNCED_COUNT).then(v => setGksSyncedCount(v ? parseInt(v, 10) : null));
+      get(KEYS.CONTRACT_BLOCK).then(v => setBanner(contractBanner(v)));
     }, [])
   );
 
@@ -51,6 +54,13 @@ export default function HomeScreen({ navigation }: any) {
           </Text>
         </View>
       </View>
+
+      {/* Persistent while GKS refuses this app's contract version (REQ-0013 C6.4) */}
+      {banner && (
+        <View style={styles.banner} accessibilityRole="alert">
+          <Text style={styles.bannerText}>{banner}</Text>
+        </View>
+      )}
 
       <ScrollView style={styles.scroll} showsVerticalScrollIndicator={false}>
         {/* Capture button */}
@@ -144,6 +154,8 @@ const colors = { bg: '#FDF8F4', accent: '#C17A3A', text: '#2D2016', border: '#E0
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.bg },
+  banner: { backgroundColor: '#FDECC8', borderColor: '#D97706', borderWidth: 1, borderRadius: 8, marginHorizontal: 16, marginTop: 8, padding: 12 },
+  bannerText: { color: '#7A3E00', fontSize: 14, fontWeight: '600' },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',

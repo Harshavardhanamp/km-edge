@@ -27,6 +27,7 @@ import { buildEnvelope, buildUpdateEnvelope } from './envelope';
 import { mapError } from '../errors/edgeErrorMap';
 import { telemetry, buildTelemetryBatch, markTelemetryTransmitted, type SyncRunResult } from '../telemetry';
 import { get, set, KEYS } from '../secureStore';
+import { EDGE_ERROR_CATALOGUE } from '../contract';
 
 export type SyncResult = {
   synced: number;
@@ -318,12 +319,13 @@ async function flushTelemetry(baseUrl: string): Promise<number> {
   return ids.length;
 }
 
-async function verifyChecksums(baseUrl: string): Promise<void> {
+/** Compare head hashes with GKS (contract §9). Returns false when verification could not run. */
+async function verifyChecksums(baseUrl: string): Promise<boolean> {
   const result = await syncStatus(baseUrl);
-  if (!result.ok) return;
+  if (!result.ok) return false;
 
   const data = result.body as { records?: { edge_id: string; gks_id?: string; content_sha256: string }[]; synced_record_count?: number };
-  if (!data?.records) return;
+  if (!data?.records) return false;
 
   for (const gksRec of data.records) {
     const local = db.getFirstSync<{
@@ -366,6 +368,7 @@ async function verifyChecksums(baseUrl: string): Promise<void> {
   if (typeof data.synced_record_count === 'number') {
     await set(KEYS.GKS_SYNCED_COUNT, String(data.synced_record_count));
   }
+  return true;
 }
 
 export async function runSync(): Promise<SyncResult> {
@@ -423,17 +426,18 @@ export async function runSync(): Promise<SyncResult> {
 
   result.telemetryFlushed = await flushTelemetry(baseUrl);
 
-  await verifyChecksums(baseUrl);
+  const verified = await verifyChecksums(baseUrl);
 
-  // last_synced_at written after verifyChecksums (even if verification fails internally)
-  await set(KEYS.LAST_SYNCED_AT, new Date().toISOString());
+  // REQ-0013 C6.2: only a run that finished and verified counts as "synced"; otherwise Home keeps the previous value.
+  if (verified && stopReason === 'completed') await set(KEYS.LAST_SYNCED_AT, new Date().toISOString());
 
   // Device health for this run; queued now and sent with the next run's batch
   // (GKS records last-sync time itself from the sync-status call above).
   counts.attachments = runAttachments;
   counts.rejected = runErrors.length;
   telemetry.syncRun({ result: stopReason, durationMs: Date.now() - startedAt, counts });
-  for (const code of runErrors) telemetry.error(code);
+  // C6.1: a code outside the contract catalogue is a contract violation.
+  for (const code of runErrors) telemetry.error(EDGE_ERROR_CATALOGUE.includes(code) ? code : 'contract');
 
   return result;
 }

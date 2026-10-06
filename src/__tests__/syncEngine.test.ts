@@ -394,3 +394,66 @@ describe('verifyChecksums', () => {
     expect(delta?.gks_error).toBe('EDGE_CHECKSUM_MISMATCH');
   });
 });
+
+describe('K6 — last_synced_at honesty (REQ-0013 C6.2)', () => {
+  async function lastSynced() {
+    const { getItemAsync } = await import('expo-secure-store');
+    return getItemAsync('last_synced_at');
+  }
+
+  test('not written when sync-status verification fails', async () => {
+    mockFetch([
+      capOk(),
+      healthOk(),
+      { ok: false, status: 500, json: () => Promise.resolve({ error: { code: 'EDGE_SERVER_ERROR', message: 'x' } }) },
+    ]);
+    await runSync();
+    expect(await lastSynced()).toBeNull();
+  });
+
+  test('not written when the run stops on a network error', async () => {
+    const edge_id = insertRecord();
+    insertDelta(edge_id, 'CREATE');
+    let call = 0;
+    jest.spyOn(global, 'fetch').mockImplementation(async () => {
+      call++;
+      if (call === 3) throw new Error('network down'); // createRecord
+      const resp = call === 1 ? capOk() : call === 2 ? healthOk() : syncStatusEmpty();
+      return { ok: true, status: 200, json: resp.json, headers: { get: () => null } } as unknown as Response;
+    });
+    await runSync();
+    expect(await lastSynced()).toBeNull();
+  });
+
+  test('previous value is kept when a later run fails verification', async () => {
+    const { setItemAsync } = await import('expo-secure-store');
+    await setItemAsync('last_synced_at', '2026-10-01T09:00:00.000Z');
+    mockFetch([capOk(), healthOk(), { ok: false, status: 500, json: () => Promise.resolve({}) }]);
+    await runSync();
+    expect(await lastSynced()).toBe('2026-10-01T09:00:00.000Z');
+  });
+});
+
+describe('K6 — contract block and unmapped codes', () => {
+  test('a fresh capabilities success clears a stored contract block', async () => {
+    const { setItemAsync, getItemAsync } = await import('expo-secure-store');
+    await setItemAsync('contract_block', JSON.stringify({ code: 'EDGE_CONTRACT_UNSUPPORTED', details: { direction: 'client_upgrade_required' } }));
+    mockFetch([capOk(), healthOk(), syncStatusEmpty()]);
+    await runSync();
+    expect(await getItemAsync('contract_block')).toBeNull();
+  });
+
+  test('a code outside the contract catalogue is logged as the "contract" category (C6.1)', async () => {
+    const edge_id = insertRecord();
+    insertDelta(edge_id, 'CREATE');
+    mockFetch([
+      capOk(),
+      healthOk(),
+      { ok: false, status: 400, json: () => Promise.resolve({ error: { code: 'SOME_FUTURE_CODE', message: 'x' } }) },
+      syncStatusEmpty(),
+    ]);
+    await runSync();
+    const row = db.getFirstSync<{ metadata: string }>(`SELECT metadata FROM telemetry_events WHERE event_type = 'error'`);
+    expect(JSON.parse(row!.metadata)).toEqual({ category: 'contract' });
+  });
+});

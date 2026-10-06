@@ -1,26 +1,17 @@
 import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useGksProbe } from '../lib/gksProbe';
-import { db } from '../lib/db/index';
 import { KEYS, get } from '../lib/secureStore';
-import { runSync, type SyncResult } from '../lib/sync/syncEngine';
+import { runSync } from '../lib/sync/syncEngine';
+import { loadStatusSummary, retryDelta, type StatusSummary } from '../lib/sync/statusSummary';
 
 export default function StatusDetailScreen({ navigation }: any) {
   const { reachable, lastProbeAt } = useGksProbe();
   const [gksUrl, setGksUrl] = useState<string>('');
-  const [pendingCount, setPendingCount] = useState(0);
   const [syncing, setSyncing] = useState(false);
-  const [lastResult, setLastResult] = useState<SyncResult | null>(null);
+  const [summary, setSummary] = useState<StatusSummary>({ waiting: 0, synced: 0, attention: [] });
   const [lastSyncedAt, setLastSyncedAt] = useState<string | null>(null);
   const [gksSyncedCount, setGksSyncedCount] = useState<number | null>(null);
-
-  interface RejectedDelta {
-    seq: number;
-    title: string;
-    gks_error: string | null;
-    edge_id: string;
-  }
-  const [rejectedDeltas, setRejectedDeltas] = useState<RejectedDelta[]>([]);
 
   useEffect(() => {
     get(KEYS.GKS_SERVER_URL).then((u) => setGksUrl(u ?? '—'));
@@ -28,95 +19,69 @@ export default function StatusDetailScreen({ navigation }: any) {
   }, []);
 
   function loadData() {
-    const row = db.getFirstSync<{ n: number }>(
-      `SELECT COUNT(*) AS n FROM delta_log WHERE status = 'PENDING'`
-    );
-    setPendingCount(row?.n ?? 0);
-
-    const rows = db.getAllSync<RejectedDelta>(
-      `SELECT d.seq, r.title, d.gks_error, d.edge_id
-       FROM delta_log d
-       JOIN records r ON r.edge_id = d.edge_id
-       WHERE d.status = 'REJECTED'
-       ORDER BY d.seq ASC`
-    );
-    setRejectedDeltas(rows);
-
+    setSummary(loadStatusSummary());
     get(KEYS.LAST_SYNCED_AT).then(v => setLastSyncedAt(v));
     get(KEYS.GKS_SYNCED_COUNT).then(v => setGksSyncedCount(v ? parseInt(v, 10) : null));
   }
 
-  async function handleRetry(seq: number) {
-    db.runSync(
-      `UPDATE delta_log SET status = 'PENDING', retry_count = 0, gks_error = NULL WHERE seq = ?`,
-      seq
-    );
-    await runSync();
-    loadData();
-  }
-
-  async function handleSync() {
+  async function sync() {
     setSyncing(true);
-    const result = await runSync();
-    setLastResult(result);
-    setSyncing(false);
-    loadData();
+    try {
+      await runSync();
+    } finally {
+      setSyncing(false);
+      loadData();
+    }
   }
 
-  const probeLabel = lastProbeAt ? `Last checked ${relTime(lastProbeAt)}` : 'Checking…';
+  async function handleRetry(seq: number) {
+    retryDelta(seq);
+    await sync();
+  }
+
+  const syncedCount = gksSyncedCount ?? summary.synced;
+  const connection = reachable ? 'Connected' : 'Can’t reach Kashyap’s Knowledge';
+  const checked = lastProbeAt ? ` · checked ${relTime(lastProbeAt)}` : '';
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>GKS Status</Text>
+        <Text style={styles.headerTitle}>Sync status</Text>
         <TouchableOpacity onPress={() => navigation.goBack()}>
           <Text style={styles.close}>Done</Text>
         </TouchableOpacity>
       </View>
 
       <View style={styles.row}>
-        <Text style={styles.label}>Server</Text>
+        <Text style={styles.label}>Kashyap’s Knowledge</Text>
         <Text style={styles.value} numberOfLines={1}>{gksUrl}</Text>
       </View>
 
       <View style={styles.row}>
-        <Text style={styles.label}>Status</Text>
-        <Text style={styles.value}>{reachable ? '🟢 Reachable' : '🔴 Unreachable'}</Text>
-      </View>
-
-      <View style={styles.row}>
-        <Text style={styles.label}>Probe</Text>
-        <Text style={styles.value}>{probeLabel}</Text>
-      </View>
-
-      <View style={styles.row}>
-        <Text style={styles.label}>Pending deltas</Text>
-        <Text style={styles.value}>{pendingCount}</Text>
+        <Text style={styles.label}>Connection</Text>
+        <Text style={styles.value}>{connection}{checked}</Text>
       </View>
 
       <View style={styles.row}>
         <Text style={styles.label}>Last synced</Text>
-        <Text style={styles.value}>{lastSyncedAt ? relTime(lastSyncedAt) : 'Never'}</Text>
+        <Text style={styles.value}>{lastSyncedAt ? relTime(lastSyncedAt) : 'Never synced'}</Text>
       </View>
 
       <View style={styles.row}>
-        <Text style={styles.label}>Synced to GKS</Text>
-        <Text style={styles.value}>{gksSyncedCount ?? '—'}</Text>
+        <Text style={styles.label}>Waiting to sync ({summary.waiting})</Text>
+        <Text style={styles.value}>{summary.waiting === 0 ? 'Nothing waiting' : `${summary.waiting} record${summary.waiting === 1 ? '' : 's'}`}</Text>
       </View>
 
-      {lastResult && (
-        <View style={styles.row}>
-          <Text style={styles.label}>Last sync</Text>
-          <Text style={styles.value}>
-            {lastResult.synced} synced · {lastResult.failed} failed · {lastResult.telemetryFlushed} events sent
-          </Text>
-        </View>
-      )}
+      <View style={styles.row}>
+        <Text style={styles.label}>Synced</Text>
+        <Text style={styles.value}>{`Synced ${syncedCount} record${syncedCount === 1 ? '' : 's'}`}</Text>
+      </View>
 
       <TouchableOpacity
         style={[styles.syncBtn, (!reachable || syncing) && styles.syncBtnDisabled]}
-        onPress={handleSync}
+        onPress={sync}
         disabled={!reachable || syncing}
+        accessibilityRole="button"
       >
         {syncing
           ? <ActivityIndicator color="#FFF" />
@@ -124,21 +89,25 @@ export default function StatusDetailScreen({ navigation }: any) {
         }
       </TouchableOpacity>
 
-      {rejectedDeltas.length > 0 && (
+      {summary.attention.length > 0 && (
         <View style={styles.rejectedSection}>
-          <Text style={styles.sectionHeader}>Failed Records</Text>
-          {rejectedDeltas.map(d => (
-            <View key={d.seq} style={styles.rejectedRow}>
+          <Text style={styles.sectionHeader}>Needs attention ({summary.attention.length})</Text>
+          {summary.attention.map(item => (
+            <View key={item.key} style={styles.rejectedRow}>
               <View style={{ flex: 1 }}>
-                <Text style={styles.rejectedTitle} numberOfLines={1}>{d.title}</Text>
-                <Text style={styles.rejectedError}>{d.gks_error ?? 'Unknown error'}</Text>
+                <Text style={styles.rejectedTitle} numberOfLines={1}>{item.title}</Text>
+                <Text style={styles.rejectedError}>{item.sentence}</Text>
               </View>
-              <TouchableOpacity
-                style={styles.retryBtn}
-                onPress={() => handleRetry(d.seq)}
-              >
-                <Text style={styles.retryBtnText}>Retry</Text>
-              </TouchableOpacity>
+              {item.retrySeq !== null && (
+                <TouchableOpacity
+                  style={[styles.retryBtn, syncing && styles.syncBtnDisabled]}
+                  onPress={() => handleRetry(item.retrySeq!)}
+                  disabled={syncing}
+                  accessibilityRole="button"
+                >
+                  <Text style={styles.retryBtnText}>Retry</Text>
+                </TouchableOpacity>
+              )}
             </View>
           ))}
         </View>

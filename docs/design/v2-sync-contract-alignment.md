@@ -132,6 +132,19 @@ SecureStore `KEYS`: remove `GKS_PASSWORD_ENC`; add `EDGE_TOKEN`, `EDGE_TOKEN_EXP
 - **HomeScreen:** persistent banner when `CONTRACT_BLOCK` set; "Last synced" from `LAST_SYNCED_AT` only.
 - **StatusDetailScreen:** "Waiting to sync (N)", "Synced N records", "Needs attention (N)" list with mapped sentences and Retry only when retryable; "Sync now".
 - **SettingsScreen:** Account shows display name, "Signed in until *<date>*", device name (editable), Log out; GKS Server shows URL + "Change server"; About → "How syncing works".
+
+**As built (K6, 2026-10-06):**
+- `src/lib/sync/statusSummary.ts` holds all status wording, so it can be tested without rendering.
+  - `loadStatusSummary()` returns *waiting*: distinct records with `PENDING`/`IN_FLIGHT` deltas.
+  - It also returns *synced*: live records with a `gks_id`. The screen prefers the server's `GKS_SYNCED_COUNT`.
+  - And *attention*: `REJECTED` deltas with no later delta for that record, plus `FAILED` attachments listed by file name. Each item shows its mapped sentence, never a code. Retry appears only for retryable codes, and `retryDelta` resets `retry_count` to 0.
+- `contractBanner()` turns the stored `CONTRACT_BLOCK` into the Home banner. It reads `details.direction` in both the GKS spelling (`client_/server_upgrade_required`) and the contract §8 spelling (`client_/server_too_old`). With no direction, or an unreadable block, it shows "Update KM-Edge to keep syncing."
+- `CONTRACT_BLOCK` is cleared after a fresh (uncached) capabilities success. Every 426 stores the same `{code, message, details}` shape.
+- `LAST_SYNCED_AT` is written only after a completed, verified run (C6.2).
+- An unmapped code gets the C6.1 fallback sentence and a `contract` telemetry category.
+- Settings → About → "How syncing works" is `HowSyncingScreen` (copy in `src/lib/help/howSyncing.ts`), registered in `SettingsStack`.
+- Status screen labels: "Sync status", "Connection", "Last synced", "Waiting to sync (N)", "Synced N records", "Needs attention (N)", "Sync now".
+- Render tests are replaced by logic tests (`statusSummary.test.ts`), because Jest here runs in a Node environment without a React Native renderer. Adding one is a dependency change (L3).
 - **AppShell / RootNavigator:** on mount `resetInFlightToPending`, `cleanStagingDirectory`; deep links `kmedge://record/<edge_id>` (V2-F5) and `kmedge://connect?…` (opens discovery confirmation if not logged in to that server).
 
 ## 9. Error map (`errors/edgeErrorMap.ts`)

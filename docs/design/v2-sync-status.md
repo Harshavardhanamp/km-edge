@@ -227,6 +227,8 @@ for (const gksRec of gksRecords) {
 
 ## 6. last_synced_at Storage
 
+> **Superseded 2026-10-06 (K6, REQ-0013 C6.2).** `LAST_SYNCED_AT` is now written only when the run finished (`stopReason === 'completed'`) **and** `verifyChecksums()` returned `true` (sync-status answered with a `records` list). An aborted run or a failed status call keeps the previous value, so Home shows that or "Never synced". `GKS_SYNCED_COUNT` is the server's `synced_record_count`. The original text follows for history.
+
 After the sync status call completes (regardless of whether any mismatches were found), `syncEngine.ts` writes two values to SecureStore:
 
 ```typescript
@@ -239,6 +241,8 @@ await set(KEYS.GKS_SYNCED_COUNT, String(result.synced)); // count acknowledged t
 These writes happen unconditionally at the end of every `runSync()` call, after `verifyChecksums()` returns (whether or not the status call itself succeeded). The timestamp reflects when the sync run completed, not whether verification passed — a failed status call is not treated as a sync failure.
 
 ---
+
+> **K6 (2026-10-06):** StatusDetailScreen wording and its Needs-attention list now come from `src/lib/sync/statusSummary.ts`; see `v2-sync-contract-alignment.md` §8. The "Pending deltas", "Probe" and "Failed Records" labels in §7–§8 below are superseded.
 
 ## 7. HomeScreen Changes
 

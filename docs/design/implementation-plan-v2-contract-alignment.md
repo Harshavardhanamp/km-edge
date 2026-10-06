@@ -83,6 +83,8 @@ Per ADR-0006: follow the steps in order; any deviation is surfaced before procee
 
 **Tests:** render tests for status wording given fixture-driven delta states; banner presence.
 
+**Status (2026-10-06):** implemented, not yet accepted (tests run on the test machine). The wording is tested through `statusSummary.test.ts`, driven by the fixture error codes, rather than render tests: the Jest setup has no React Native renderer, and adding one needs approval. `syncEngine.test.ts` gains last-synced honesty, contract-block clearing and `contract`-category cases. Found and fixed along the way: `LAST_SYNCED_AT` was written after failed or aborted runs; Settings linked to a `HowSyncing` route that didn't exist; the unmapped-code sentence didn't match C6.1. Contract drift: GKS sends `client_/server_upgrade_required`, contract §8 says `client_/server_too_old`. The phone accepts both; the contract text needs reconciling in GKS (P8).
+
 ## K7 — Device acceptance and release
 
 1. Build (EAS dev build or APK) against GKS 2.1.0 on a scratch or real server.

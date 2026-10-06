@@ -17,7 +17,7 @@ export interface ErrorEntry {
 // Every code that appears in contract §8 and in the pinned fixtures.
 export const edgeErrorMap: Record<string, ErrorEntry> = {
   EDGE_CONTRACT_UNSUPPORTED: {
-    sentence: 'Update KM-Edge to continue syncing.',
+    sentence: 'Update KM-Edge to keep syncing.',
     action: 'update_app',
     retryable: false,
   },
@@ -111,7 +111,7 @@ export const edgeErrorMap: Record<string, ErrorEntry> = {
 export function mapError(code: string): ErrorEntry {
   return (
     edgeErrorMap[code] ?? {
-      sentence: 'An unexpected error occurred. Contact your administrator.',
+      sentence: 'This record couldn’t be sent. Contact your administrator.', // REQ-0013 C6.1
       action: 'none',
       retryable: false,
     }
