@@ -13,9 +13,11 @@
       "edge_id": "01927c4a-0000-7000-8000-000000000002",
       "record_type": "JOURNAL",
       "content": "Meeting Ravi next Tuesday to discuss the Bangalore project",
-      "content_sha256": "a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2",
+      "content_sha256": "fdde96d8361861846042e2ccd9cae468f5aeb856d629275e375e5fe53e2aa71d",
       "captured_at": "2026-09-30T09:00:00Z",
-      "tags": ["professional"],
+      "tags": [
+        "professional"
+      ],
       "classification": "HOUSEHOLD"
     }
   },
@@ -26,10 +28,19 @@
       "edge_id": "01927c4a-0000-7000-8000-000000000002",
       "gks_id": "KNOW-000042",
       "pending_temporal": [
-        {"kind": "person_reference", "value": "Ravi"},
-        {"kind": "relative_date", "value": "next Tuesday"}
+        {
+          "kind": "person_reference",
+          "value": "Ravi"
+        },
+        {
+          "kind": "relative_date",
+          "value": "next Tuesday"
+        }
       ]
     }
   },
-  "preconditions": ["authenticated as usr-001", "server extracted unresolved people and date references from content"]
+  "preconditions": [
+    "authenticated as usr-001",
+    "server extracted unresolved people and date references from content"
+  ]
 }

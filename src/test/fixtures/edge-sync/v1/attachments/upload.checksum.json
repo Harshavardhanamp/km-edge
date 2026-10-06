@@ -10,11 +10,13 @@
     },
     "multipart": {
       "fields": {
-        "filename": "school-first-day.jpg",
-        "content_sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+        "edge_attachment_id": "01927c4a-0000-7000-8000-0000000000a1",
+        "sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+        "original_filename": "school-first-day.jpg",
         "mime_type": "image/jpeg"
       },
-      "file_field": "file"
+      "file_field": "file",
+      "file_bytes_hex": "ffd8ffe04b4d2d456467652050362066697874757265206a70656720626f6479"
     }
   },
   "response": {
@@ -23,5 +25,7 @@
       "code": "EDGE_CHECKSUM_MISMATCH"
     }
   },
-  "preconditions": ["content_sha256 field does not match sha256 of the uploaded file bytes"]
+  "preconditions": [
+    "content_sha256 field does not match sha256 of the uploaded file bytes"
+  ]
 }

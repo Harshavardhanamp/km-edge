@@ -13,9 +13,11 @@
       "edge_id": "01927c4a-0000-7000-8000-000000000002",
       "record_type": "JOURNAL",
       "content": "Avyu started school today at Vidyashilp in Bangalore",
-      "content_sha256": "a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2",
+      "content_sha256": "bf8e4578ea70a21e1e5354c3dd7304014e20abfa0e17777c7da35b87bf9d84db",
       "captured_at": "2026-09-30T09:00:00Z",
-      "tags": ["family"],
+      "tags": [
+        "family"
+      ],
       "classification": "HOUSEHOLD",
       "place_label": "Vidyashilp Academy Bangalore"
     }
@@ -31,5 +33,8 @@
       }
     }
   },
-  "preconditions": ["authenticated as usr-001", "a place topic matching Vidyashilp Academy Bangalore exists as KNOW-000010"]
+  "preconditions": [
+    "authenticated as usr-001",
+    "a place topic matching Vidyashilp Academy Bangalore exists as KNOW-000010"
+  ]
 }

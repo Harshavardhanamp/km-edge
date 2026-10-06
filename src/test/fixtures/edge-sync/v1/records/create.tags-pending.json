@@ -13,9 +13,12 @@
       "edge_id": "01927c4a-0000-7000-8000-000000000002",
       "record_type": "JOURNAL",
       "content": "Avyu started school today at Vidyashilp in Bangalore",
-      "content_sha256": "a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2",
+      "content_sha256": "bf8e4578ea70a21e1e5354c3dd7304014e20abfa0e17777c7da35b87bf9d84db",
       "captured_at": "2026-09-30T09:00:00Z",
-      "tags": ["family", "unknown-custom-label"],
+      "tags": [
+        "family",
+        "unknown-custom-label"
+      ],
       "classification": "HOUSEHOLD"
     }
   },
@@ -25,8 +28,13 @@
       "state": "ACCEPTED",
       "edge_id": "01927c4a-0000-7000-8000-000000000002",
       "gks_id": "KNOW-000042",
-      "pending_labels": ["unknown-custom-label"]
+      "pending_labels": [
+        "unknown-custom-label"
+      ]
     }
   },
-  "preconditions": ["authenticated as usr-001", "tag unknown-custom-label does not exist in server taxonomy"]
+  "preconditions": [
+    "authenticated as usr-001",
+    "tag unknown-custom-label does not exist in server taxonomy"
+  ]
 }

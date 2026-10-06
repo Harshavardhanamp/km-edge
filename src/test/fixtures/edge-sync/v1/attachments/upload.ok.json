@@ -10,20 +10,31 @@
     },
     "multipart": {
       "fields": {
-        "filename": "school-first-day.jpg",
-        "content_sha256": "a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2",
+        "edge_attachment_id": "01927c4a-0000-7000-8000-0000000000a1",
+        "sha256": "8c5603edb20b3f5123d241cec8032a643a6097a74dd44c8510fa9e77c026cb59",
+        "original_filename": "school-first-day.jpg",
         "mime_type": "image/jpeg"
       },
-      "file_field": "file"
+      "file_field": "file",
+      "file_bytes_hex": "ffd8ffe04b4d2d456467652050362066697874757265206a70656720626f6479"
     }
   },
   "response": {
     "status": 201,
     "body": {
+      "contract_version": 1,
       "state": "ACCEPTED",
-      "attachment_id": "att-001",
-      "edge_id": "01927c4a-0000-7000-8000-000000000002"
+      "edge_id": "01927c4a-0000-7000-8000-000000000002",
+      "gks_id": "KNOW-000042",
+      "edge_attachment_id": "01927c4a-0000-7000-8000-0000000000a1",
+      "gks_attachment_id": "ATT-000001",
+      "sha256": "8c5603edb20b3f5123d241cec8032a643a6097a74dd44c8510fa9e77c026cb59",
+      "size_bytes": 32,
+      "scan_status": "CLEAN"
     }
   },
-  "preconditions": ["record 01927c4a-0000-7000-8000-000000000002 exists", "file is a valid JPEG under max_file_bytes"]
+  "preconditions": [
+    "record 01927c4a-0000-7000-8000-000000000002 exists",
+    "file is a valid JPEG under max_file_bytes"
+  ]
 }

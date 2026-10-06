@@ -13,9 +13,11 @@
       "edge_id": "01927c4a-0000-7000-8000-000000000002",
       "record_type": "JOURNAL",
       "content": "<string of 100001+ characters — see preconditions>",
-      "content_sha256": "a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2",
+      "content_sha256": "758a20f5e90ce17437eef8b78bb94d6401aaec73ddf908759573cc9bb012af72",
       "captured_at": "2026-09-30T09:00:00Z",
-      "tags": ["family"],
+      "tags": [
+        "family"
+      ],
       "classification": "HOUSEHOLD"
     }
   },
@@ -26,5 +28,7 @@
       "max_content_chars": 100000
     }
   },
-  "preconditions": ["content field must be a string of length > 100000 characters; content_sha256 must match that string"]
+  "preconditions": [
+    "content field must be a string of length > 100000 characters; content_sha256 must match that string"
+  ]
 }
