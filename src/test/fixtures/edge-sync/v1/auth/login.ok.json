@@ -9,8 +9,9 @@
       "Content-Type": "application/json"
     },
     "body": {
-      "username": "priya",
+      "identifier": "priya",
       "password": "correct-password-123",
+      "device_id": "01927c4a-0000-7000-8000-000000000001",
       "device_name": "Priya's iPhone",
       "platform": "ios",
       "app_version": "2.0.0"
@@ -25,9 +26,12 @@
         "user_id": "usr-001",
         "username": "priya",
         "display_name": "Priya",
-        "role": "MEMBER"
+        "role": "MEMBER",
+        "password_change_required": false
       }
     }
   },
-  "preconditions": ["user priya exists with correct-password-123"]
+  "preconditions": [
+    "user priya exists with correct-password-123"
+  ]
 }

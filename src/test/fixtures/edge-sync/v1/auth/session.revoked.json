@@ -12,8 +12,12 @@
   "response": {
     "status": 401,
     "body": {
-      "code": "EDGE_SESSION_REVOKED"
+      "error": {
+        "code": "EDGE_SESSION_REVOKED"
+      }
     }
   },
-  "preconditions": ["token revoked-token-001 exists but has been explicitly revoked"]
+  "preconditions": [
+    "token revoked-token-001 exists but has been explicitly revoked"
+  ]
 }

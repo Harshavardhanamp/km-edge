@@ -138,7 +138,7 @@ SecureStore `KEYS`: remove `GKS_PASSWORD_ENC`; add `EDGE_TOKEN`, `EDGE_TOKEN_EXP
   - `loadStatusSummary()` returns *waiting*: distinct records with `PENDING`/`IN_FLIGHT` deltas.
   - It also returns *synced*: live records with a `gks_id`. The screen prefers the server's `GKS_SYNCED_COUNT`.
   - And *attention*: `REJECTED` deltas with no later delta for that record, plus `FAILED` attachments listed by file name. Each item shows its mapped sentence, never a code. Retry appears only for retryable codes, and `retryDelta` resets `retry_count` to 0.
-- `contractBanner()` turns the stored `CONTRACT_BLOCK` into the Home banner. It reads `details.direction` in both the GKS spelling (`client_/server_upgrade_required`) and the contract §8 spelling (`client_/server_too_old`). With no direction, or an unreadable block, it shows "Update KM-Edge to keep syncing."
+- `contractBanner()` turns the stored `CONTRACT_BLOCK` into the Home banner. It reads `details.direction` (`client_too_old` / `server_too_old`, contract §8; GKS P8 aligned its implementation to these names). With no direction, or an unreadable block, it shows "Update KM-Edge to keep syncing."
 - `CONTRACT_BLOCK` is cleared after a fresh (uncached) capabilities success. Every 426 stores the same `{code, message, details}` shape.
 - `LAST_SYNCED_AT` is written only after a completed, verified run (C6.2).
 - An unmapped code gets the C6.1 fallback sentence and a `contract` telemetry category.

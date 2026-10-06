@@ -437,7 +437,7 @@ describe('K6 — last_synced_at honesty (REQ-0013 C6.2)', () => {
 describe('K6 — contract block and unmapped codes', () => {
   test('a fresh capabilities success clears a stored contract block', async () => {
     const { setItemAsync, getItemAsync } = await import('expo-secure-store');
-    await setItemAsync('contract_block', JSON.stringify({ code: 'EDGE_CONTRACT_UNSUPPORTED', details: { direction: 'client_upgrade_required' } }));
+    await setItemAsync('contract_block', JSON.stringify({ code: 'EDGE_CONTRACT_UNSUPPORTED', details: { direction: 'client_too_old' } }));
     mockFetch([capOk(), healthOk(), syncStatusEmpty()]);
     await runSync();
     expect(await getItemAsync('contract_block')).toBeNull();

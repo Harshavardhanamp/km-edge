@@ -12,8 +12,12 @@
   "response": {
     "status": 401,
     "body": {
-      "code": "EDGE_SESSION_EXPIRED"
+      "error": {
+        "code": "EDGE_SESSION_EXPIRED"
+      }
     }
   },
-  "preconditions": ["token expired-token-001 is past absolute_seconds limit"]
+  "preconditions": [
+    "token expired-token-001 is past absolute_seconds limit"
+  ]
 }

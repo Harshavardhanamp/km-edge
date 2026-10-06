@@ -84,7 +84,7 @@ export function retryDelta(seq: number): void {
 
 /**
  * Home banner text for a stored CONTRACT_BLOCK (C6.4), or null when syncing is not blocked.
- * GKS sends details.direction as client/server_upgrade_required; contract §8 names client/server_too_old — accept both.
+ * details.direction is client_too_old | server_too_old (contract §8).
  */
 export function contractBanner(raw: string | null | undefined): string | null {
   if (!raw) return null;
@@ -95,7 +95,7 @@ export function contractBanner(raw: string | null | undefined): string | null {
   } catch {
     // unreadable block: still blocked, assume this app is the older side
   }
-  return direction === 'server_too_old' || direction === 'server_upgrade_required'
+  return direction === 'server_too_old'
     ? 'Ask your administrator to update Kashyap’s Knowledge.'
     : 'Update KM-Edge to keep syncing.';
 }

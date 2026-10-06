@@ -9,8 +9,9 @@
       "Content-Type": "application/json"
     },
     "body": {
-      "username": "priya",
+      "identifier": "priya",
       "password": "wrong-password-000",
+      "device_id": "01927c4a-0000-7000-8000-000000000001",
       "device_name": "Priya's iPhone",
       "platform": "ios",
       "app_version": "2.0.0"
@@ -19,8 +20,12 @@
   "response": {
     "status": 401,
     "body": {
-      "code": "INVALID_LOGIN"
+      "error": {
+        "code": "INVALID_LOGIN"
+      }
     }
   },
-  "preconditions": ["user priya exists"]
+  "preconditions": [
+    "user priya exists"
+  ]
 }

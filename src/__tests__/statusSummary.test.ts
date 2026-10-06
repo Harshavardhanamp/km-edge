@@ -19,7 +19,8 @@ function fixtureRejectionCodes(): string[] {
   for (const dir of ['records', 'attachments']) {
     for (const f of fs.readdirSync(path.join(FIXTURE_DIR, dir))) {
       const body = JSON.parse(fs.readFileSync(path.join(FIXTURE_DIR, dir, f), 'utf8'))?.response?.body;
-      const code = body?.error?.code;
+      // Data routes answer flat { code }; gate errors use { error: { code } } (contract §0 amendment).
+      const code = body?.error?.code ?? body?.code;
       if (code) codes.add(code);
     }
   }
@@ -158,23 +159,22 @@ describe('contractBanner (Home)', () => {
     expect(contractBanner('')).toBeNull();
   });
 
-  test('phone is older → update the app (GKS and contract spellings)', () => {
-    expect(contractBanner(block('client_upgrade_required'))).toBe(UPDATE_APP);
+  test('phone is older → update the app', () => {
     expect(contractBanner(block('client_too_old'))).toBe(UPDATE_APP);
   });
 
-  test('server is older → ask the administrator (GKS and contract spellings)', () => {
-    expect(contractBanner(block('server_upgrade_required'))).toBe(ASK_ADMIN);
+  test('server is older → ask the administrator', () => {
     expect(contractBanner(block('server_too_old'))).toBe(ASK_ADMIN);
   });
 
-  test('error envelope shape is also read', () => {
-    expect(contractBanner(JSON.stringify({ error: { code: 'EDGE_CONTRACT_UNSUPPORTED', details: { direction: 'server_upgrade_required' } } }))).toBe(ASK_ADMIN);
+  test('the fixture 426 (version 99, server older) as stored by gksClient → ask the administrator', () => {
+    const fixture = JSON.parse(fs.readFileSync(path.join(FIXTURE_DIR, 'errors/contract-unsupported.json'), 'utf8'));
+    expect(contractBanner(JSON.stringify(fixture.response.body.error))).toBe(ASK_ADMIN); // edgeFetchInternal stores body.error
+    expect(contractBanner(JSON.stringify(fixture.response.body))).toBe(ASK_ADMIN);
   });
 
-  test('fixture 426 body (no direction) and unreadable blocks still show a banner', () => {
-    const fixture = JSON.parse(fs.readFileSync(path.join(FIXTURE_DIR, 'errors/contract-unsupported.json'), 'utf8'));
-    expect(contractBanner(JSON.stringify(fixture.response.body))).toBe(UPDATE_APP);
+  test('no direction or an unreadable block still shows a banner', () => {
+    expect(contractBanner(block())).toBe(UPDATE_APP);
     expect(contractBanner('{not json')).toBe(UPDATE_APP);
   });
 });
