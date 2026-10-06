@@ -101,6 +101,8 @@ Per ADR-0006: follow the steps in order; any deviation is surfaced before procee
 
 GKS `a547310` adds the scratch-only `GKS_EDGE_CONTRACT_VERSIONS` override (row 6.3) and dismissed-label chips (row 2.7). `app.json` is version 2.0.0, and `CHANGELOG.md` has the 2.0.0 release-candidate entry. The run procedure is in `docs/testing/device-acceptance-runbook.md`. Tag `v2.0.0` after the checklist passes.
 
+**Open items:** every outstanding run, tag, decision and known gap for K5–K7 (and GKS) is tracked in GKS `docs/roadmap/KK-2.1-OPEN-ITEMS.md`.
+
 ## Definition of done
 
 - [ ] No request to `/api/v1/records`, `/sync/status`, `/telemetry/events`, `/attachments/workflow` remains in `src/lib`.
