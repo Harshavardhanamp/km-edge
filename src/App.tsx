@@ -1,34 +1,23 @@
 import { StatusBar } from 'expo-status-bar';
-import React, { useEffect } from 'react';
+import React from 'react';
 import { ErrorUtils } from 'react-native';
 import ErrorBoundary from './components/ErrorBoundary';
-import { AuthProvider, useAuth } from './context/AuthContext';
-import { telemetry, init as telemetryInit } from './lib/telemetry';
+import { AuthProvider } from './context/AuthContext';
+import { telemetry } from './lib/telemetry';
 import RootNavigator from './navigation/RootNavigator';
 
 // Catch unhandled async/runtime errors that bypass ErrorBoundary
-ErrorUtils.setGlobalHandler((error: Error, isFatal?: boolean) => {
-  telemetry.error({ error_code: 'RUNTIME_ERROR', message: error.message, is_crash: isFatal ?? false });
+// Category only: the message and stack never leave the device (REQ-0013 ES9.1).
+ErrorUtils.setGlobalHandler(() => {
+  telemetry.error('other');
 });
-
-function AppInner() {
-  const { userId, sessionValid } = useAuth();
-
-  useEffect(() => {
-    if (sessionValid) {
-      telemetryInit(userId);
-    }
-  }, [sessionValid, userId]);
-
-  return <RootNavigator />;
-}
 
 export default function App() {
   return (
     <ErrorBoundary>
       <AuthProvider>
         <StatusBar style="auto" />
-        <AppInner />
+        <RootNavigator />
       </AuthProvider>
     </ErrorBoundary>
   );

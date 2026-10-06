@@ -371,7 +371,7 @@ describe('verifyChecksums', () => {
     expect(delta?.retry_count).toBe(1);
   });
 
-  test('after 3 mismatches → delta REJECTED with CHECKSUM_MISMATCH', async () => {
+  test('after 3 mismatches → delta REJECTED with EDGE_CHECKSUM_MISMATCH', async () => {
     const edge_id = insertRecord({ gks_id: 'GKS-011', content_sha256: 'sha-local-x' });
     db.runSync(
       `INSERT INTO delta_log (edge_id, operation, record_type, capture_kind, timestamp, status, gks_record_id, retry_count)
@@ -391,6 +391,6 @@ describe('verifyChecksums', () => {
       `SELECT status, gks_error FROM delta_log WHERE edge_id = ?`, edge_id
     );
     expect(delta?.status).toBe('REJECTED');
-    expect(delta?.gks_error).toBe('CHECKSUM_MISMATCH');
+    expect(delta?.gks_error).toBe('EDGE_CHECKSUM_MISMATCH');
   });
 });

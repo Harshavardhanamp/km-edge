@@ -8,8 +8,6 @@ import {
   View,
 } from 'react-native';
 import { db } from '../lib/db/index';
-import { telemetry } from '../lib/telemetry';
-import { useScreenTracking } from '../lib/useScreenTracking';
 import { CAPTURE_TYPES, type CaptureKind, type EdgeRecord } from '../lib/types';
 import AppHeader from '../components/AppHeader';
 import TypePickerSheet from '../components/TypePickerSheet';
@@ -47,8 +45,6 @@ function relTime(iso: string): string {
 }
 
 export default function RecordsScreen({ navigation }: any) {
-  useScreenTracking('RecordsScreen');
-
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState<Filter>('ALL');
   const [records, setRecords] = useState<Row[]>([]);
@@ -72,7 +68,6 @@ export default function RecordsScreen({ navigation }: any) {
     setSearch(text);
     if (debounceTimer.current) clearTimeout(debounceTimer.current);
     debounceTimer.current = setTimeout(() => {
-      telemetry.action('search', { query_length: text.length });
       setPage(0);
       load(text, filter, 0, true);
     }, 300);
@@ -80,7 +75,6 @@ export default function RecordsScreen({ navigation }: any) {
 
   function handleFilterChange(f: Filter) {
     setFilter(f);
-    telemetry.action('filter_apply', { filter: f });
   }
 
   function loadMore() {

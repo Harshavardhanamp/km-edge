@@ -14,7 +14,6 @@ import {
   type CalendarEvent,
 } from '../lib/calendar';
 import AppHeader from '../components/AppHeader';
-import { useScreenTracking } from '../lib/useScreenTracking';
 
 const DAYS = ['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su'];
 const MONTHS = [
@@ -27,8 +26,6 @@ function isoDate(d: Date): string {
 }
 
 export default function CalendarScreen({ navigation }: any) {
-  useScreenTracking('CalendarScreen');
-
   const today = new Date();
   const [permitted, setPermitted] = useState<boolean | null>(null);
   const [year, setYear] = useState(today.getFullYear());

@@ -63,3 +63,11 @@ export function edgeHeaders(deviceId: string, token?: string): Record<string, st
   if (token) h['Authorization'] = `Bearer ${token}`;
   return h;
 }
+
+/** GKS contract §8 — the closed set of error codes (mirrors GKS edge/errors.EDGE_ERROR_CATALOGUE). */
+export const EDGE_ERROR_CATALOGUE: readonly string[] = [
+  'EDGE_CONTRACT_UNSUPPORTED', 'EDGE_SESSION_EXPIRED', 'EDGE_SESSION_REVOKED', 'EDGE_PASSWORD_CHANGE_REQUIRED',
+  'RATE_LIMITED', 'EDGE_VALIDATION', 'EDGE_CONTENT_TOO_LONG', 'EDGE_TYPE_INVALID', 'EDGE_TYPE_LOCKED',
+  'EDGE_CHECKSUM_MISMATCH', 'EDGE_RECORD_DELETED', 'EDGE_NOT_FOUND', 'EDGE_FILE_TYPE_NOT_SUPPORTED',
+  'EDGE_FILE_TOO_LARGE', 'EDGE_RECORD_ATTACHMENT_LIMIT', 'EDGE_TEST_MODE_ACTIVE', 'EDGE_SERVER_ERROR',
+];

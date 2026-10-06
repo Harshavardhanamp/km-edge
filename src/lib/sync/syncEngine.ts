@@ -21,9 +21,11 @@ import {
   postTelemetry,
   capabilities,
   healthCheck,
+  uploadAttachment,
 } from '../gksClient';
 import { buildEnvelope, buildUpdateEnvelope } from './envelope';
 import { mapError } from '../errors/edgeErrorMap';
+import { telemetry, buildTelemetryBatch, markTelemetryTransmitted, type SyncRunResult } from '../telemetry';
 import { get, set, KEYS } from '../secureStore';
 
 export type SyncResult = {
@@ -33,92 +35,73 @@ export type SyncResult = {
   telemetryFlushed: number;
 };
 
-async function uploadAttachments(
-  baseUrl: string,
-  edge_id: string,
-  gks_record_id: string
-): Promise<void> {
+// Per-run health, written as telemetry after the run (sent with the next run's batch).
+let runErrors: string[] = [];
+let runAttachments = 0;
+let stopReason: SyncRunResult = 'completed';
+
+function reject(seq: number, code: string): void {
+  rejectDelta(seq, code);
+  runErrors.push(code);
+}
+
+// Attachment failures the user must act on (remove/replace the file); stored on the row.
+const ATTACHMENT_REJECTIONS = new Set([
+  'EDGE_CHECKSUM_MISMATCH', 'EDGE_FILE_TYPE_NOT_SUPPORTED', 'EDGE_FILE_TOO_LARGE',
+  'EDGE_RECORD_ATTACHMENT_LIMIT', 'EDGE_VALIDATION', 'EDGE_NOT_FOUND',
+]);
+
+/** Upload PENDING attachments for one record (design §5); counts stored files into runAttachments. */
+async function uploadAttachments(baseUrl: string, edge_id: string): Promise<void> {
   const attachments = db.getAllSync<{
     edge_attachment_id: string;
     sha256: string;
     blob_path: string;
+    original_filename: string;
+    mime_type: string;
   }>(
-    `SELECT a.edge_attachment_id, a.sha256, a.blob_path
+    `SELECT a.edge_attachment_id, a.sha256, a.blob_path, a.original_filename, a.mime_type
      FROM attachments a
      JOIN record_attachments ra ON ra.edge_attachment_id = a.edge_attachment_id
      WHERE ra.edge_id = ? AND a.sync_status = 'PENDING' AND a.gks_attachment_id IS NULL`,
     edge_id
   );
 
+  let uploaded = 0;
   for (const att of attachments) {
     const fullPath = `${FileSystem.documentDirectory}${att.blob_path}`;
     const info = await FileSystem.getInfoAsync(fullPath);
     if (!info.exists) continue;
 
-    let uploadRes: { status: number; body: string };
-    try {
-      uploadRes = await FileSystem.uploadAsync(
-        `${baseUrl}/api/v1/attachments/workflow/NEW_ENTRY`,
-        fullPath,
-        {
-          httpMethod: 'POST',
-          uploadType: FileSystem.FileSystemUploadType.MULTIPART,
-          fieldName: 'file',
-          parameters: { entity_ref: gks_record_id },
-        }
-      );
-    } catch {
-      continue;
-    }
+    const res = await uploadAttachment(baseUrl, edge_id, {
+      edge_attachment_id: att.edge_attachment_id,
+      sha256: att.sha256,
+      original_filename: att.original_filename,
+      mime_type: att.mime_type,
+      fileUri: fullPath,
+    });
 
-    if (uploadRes.status === 400) {
-      let errBody: { detail?: string } = {};
-      try { errBody = JSON.parse(uploadRes.body); } catch { /* ignore */ }
-      db.runSync(
-        `UPDATE attachments SET sync_status = 'FAILED', sync_error = ? WHERE edge_attachment_id = ?`,
-        errBody.detail ?? 'GKS_REJECTED',
-        att.edge_attachment_id
-      );
-      continue;
-    }
-
-    if (uploadRes.status !== 200 && uploadRes.status !== 201) continue;
-
-    let body: { attachment_id?: string; sha256?: string };
-    try { body = JSON.parse(uploadRes.body); } catch { continue; }
-
-    if (body.sha256 !== att.sha256) {
-      db.runSync(
-        `UPDATE attachments SET sync_status = 'FAILED', sync_error = 'CHECKSUM_MISMATCH' WHERE edge_attachment_id = ?`,
-        att.edge_attachment_id
-      );
-      continue;
-    }
-
-    const gks_attachment_id = body.attachment_id;
-    if (!gks_attachment_id) continue;
-
-    // Bind to record
-    try {
-      const token = await get(KEYS.EDGE_TOKEN);
-      const bindRes = await fetch(
-        `${baseUrl}/api/v1/attachments/records/${gks_record_id}/attachments/${gks_attachment_id}`,
-        {
-          method: 'POST',
-          headers: token ? { Authorization: `Bearer ${token}` } : {},
-        }
-      );
-      if (!bindRes.ok) continue;
-    } catch {
-      continue;
+    if ('network' in res) break; // stay PENDING; next run retries
+    if (!res.ok) {
+      const { code } = res.error;
+      if (code === 'EDGE_SESSION_EXPIRED' || code === 'EDGE_SESSION_REVOKED' || code === 'EDGE_CONTRACT_UNSUPPORTED') break;
+      if (ATTACHMENT_REJECTIONS.has(code)) {
+        db.runSync(
+          `UPDATE attachments SET sync_status = 'FAILED', sync_error = ? WHERE edge_attachment_id = ?`,
+          code, att.edge_attachment_id
+        );
+        runErrors.push(code);
+      }
+      continue; // retryable (rate limit, server error, test mode): stay PENDING
     }
 
     db.runSync(
-      `UPDATE attachments SET gks_attachment_id = ?, sync_status = 'SYNCED', sync_error = NULL WHERE edge_attachment_id = ?`,
-      gks_attachment_id,
-      att.edge_attachment_id
+      `UPDATE attachments SET gks_attachment_id = ?, scan_status = ?, sync_status = 'SYNCED', sync_error = NULL WHERE edge_attachment_id = ?`,
+      res.body.gks_attachment_id, res.body.scan_status ?? null, att.edge_attachment_id
     );
+    uploaded++;
   }
+  runAttachments += uploaded;
 
   // Purge blobs only when DELETE delta is ACKNOWLEDGED
   const toDelete = db.getAllSync<{ edge_attachment_id: string }>(
@@ -147,14 +130,16 @@ async function syncDelta(baseUrl: string, delta: DeltaEntry): Promise<'ok' | 'fa
 
     const result = await deleteRecord(baseUrl, edge_id);
 
-    if ('network' in result && result.network) {
+    if ('network' in result) {
       resetDeltaToPending(delta.seq);
+      stopReason = 'aborted_network';
       return 'stop';
     }
     if (!result.ok) {
       const { code } = result.error;
       if (code === 'EDGE_SESSION_EXPIRED' || code === 'EDGE_SESSION_REVOKED') {
         resetDeltaToPending(delta.seq);
+        stopReason = 'aborted_auth';
         return 'stop';
       }
       if (code === 'EDGE_RECORD_DELETED' || code === 'EDGE_NOT_FOUND') {
@@ -167,7 +152,7 @@ async function syncDelta(baseUrl: string, delta: DeltaEntry): Promise<'ok' | 'fa
         resetDeltaToPending(delta.seq);
         return 'skip';
       }
-      rejectDelta(delta.seq, code);
+      reject(delta.seq, code);
       return 'fail';
     }
 
@@ -197,7 +182,7 @@ async function syncDelta(baseUrl: string, delta: DeltaEntry): Promise<'ok' | 'fa
 
   const record = getRecord(delta.edge_id);
   if (!record) {
-    rejectDelta(delta.seq, 'EDGE_NOT_FOUND');
+    reject(delta.seq, 'EDGE_NOT_FOUND');
     return 'fail';
   }
 
@@ -219,18 +204,20 @@ async function syncDelta(baseUrl: string, delta: DeltaEntry): Promise<'ok' | 'fa
       markInFlight(delta.seq);
       const result = await updateRecord(baseUrl, delta.edge_id, buildUpdateEnvelope(record, row.synced_content_sha256), row.synced_content_sha256);
 
-      if ('network' in result && result.network) {
+      if ('network' in result) {
         resetDeltaToPending(delta.seq);
+        stopReason = 'aborted_network';
         return 'stop';
       }
       if (!result.ok) {
         const { code } = result.error;
         if (code === 'EDGE_SESSION_EXPIRED' || code === 'EDGE_SESSION_REVOKED') {
           resetDeltaToPending(delta.seq);
+          stopReason = 'aborted_auth';
           return 'stop';
         }
         if (code === 'EDGE_RECORD_DELETED') {
-          rejectDelta(delta.seq, code);
+          reject(delta.seq, code);
           localSoftDelete(delta.edge_id, 'removed on desktop');
           return 'fail';
         }
@@ -239,7 +226,7 @@ async function syncDelta(baseUrl: string, delta: DeltaEntry): Promise<'ok' | 'fa
           resetDeltaToPending(delta.seq);
           return 'skip';
         }
-        rejectDelta(delta.seq, code);
+        reject(delta.seq, code);
         return 'fail';
       }
 
@@ -259,6 +246,7 @@ async function syncDelta(baseUrl: string, delta: DeltaEntry): Promise<'ok' | 'fa
       } else {
         acknowledgeDelta(delta.seq, gks_id);
       }
+      await uploadAttachments(baseUrl, delta.edge_id);
       return 'ok';
     }
 
@@ -269,18 +257,20 @@ async function syncDelta(baseUrl: string, delta: DeltaEntry): Promise<'ok' | 'fa
   markInFlight(delta.seq);
   const result = await createRecord(baseUrl, buildEnvelope(record));
 
-  if ('network' in result && result.network) {
+  if ('network' in result) {
     resetDeltaToPending(delta.seq);
+    stopReason = 'aborted_network';
     return 'stop';
   }
   if (!result.ok) {
     const { code } = result.error;
     if (code === 'EDGE_SESSION_EXPIRED' || code === 'EDGE_SESSION_REVOKED') {
       resetDeltaToPending(delta.seq);
+      stopReason = 'aborted_auth';
       return 'stop';
     }
     if (code === 'EDGE_RECORD_DELETED') {
-      rejectDelta(delta.seq, code);
+      reject(delta.seq, code);
       localSoftDelete(delta.edge_id, 'removed on desktop');
       return 'fail';
     }
@@ -289,7 +279,7 @@ async function syncDelta(baseUrl: string, delta: DeltaEntry): Promise<'ok' | 'fa
       resetDeltaToPending(delta.seq);
       return 'skip';
     }
-    rejectDelta(delta.seq, code);
+    reject(delta.seq, code);
     return 'fail';
   }
 
@@ -311,40 +301,21 @@ async function syncDelta(baseUrl: string, delta: DeltaEntry): Promise<'ok' | 'fa
     }
   }
 
-  await uploadAttachments(baseUrl, delta.edge_id, gks_id);
+  await uploadAttachments(baseUrl, delta.edge_id);
   return 'ok';
 }
 
 async function flushTelemetry(baseUrl: string): Promise<number> {
-  const rows = db.getAllSync<{
-    id: number;
-    session_id: string;
-    user_id: string;
-    event_type: string;
-    event_name: string;
-    timestamp: string;
-    metadata: string;
-  }>(`SELECT id, session_id, user_id, event_type, event_name, timestamp, metadata
-      FROM telemetry_events WHERE transmitted = 0 ORDER BY id ASC LIMIT 200`);
-
-  if (rows.length === 0) return 0;
-
-  const events = rows.map((r) => ({
-    id: String(r.id),
-    user_id: r.user_id,
-    session_id: r.session_id,
-    event_type: r.event_type,
-    action: r.event_name,
-    metadata: JSON.parse(r.metadata),
-    occurred_at: r.timestamp,
-  }));
-
+  const { ids, events } = buildTelemetryBatch();
+  if (ids.length === 0) return 0;
   const res = await postTelemetry(baseUrl, events);
-  if (!res.ok) return 0;
-
-  const ids = rows.map((r) => r.id).join(',');
-  db.runSync(`UPDATE telemetry_events SET transmitted = 1 WHERE id IN (${ids})`);
-  return rows.length;
+  if (!res.ok) {
+    // A batch the server refuses as invalid would be refused forever; drop it rather than block telemetry.
+    if ('error' in res && res.error.code === 'EDGE_VALIDATION') markTelemetryTransmitted(ids);
+    return 0; // otherwise kept queued; retried next run
+  }
+  markTelemetryTransmitted(ids);
+  return ids.length;
 }
 
 async function verifyChecksums(baseUrl: string): Promise<void> {
@@ -384,7 +355,7 @@ async function verifyChecksums(baseUrl: string): Promise<void> {
 
     // Mismatch
     if (local.retry_count >= 2) {
-      rejectDelta(local.seq, 'CHECKSUM_MISMATCH');
+      reject(local.seq, 'EDGE_CHECKSUM_MISMATCH');
     } else {
       resetDeltaToPending(local.seq);
       bumpRetry(local.seq);
@@ -399,6 +370,11 @@ async function verifyChecksums(baseUrl: string): Promise<void> {
 
 export async function runSync(): Promise<SyncResult> {
   const result: SyncResult = { synced: 0, failed: 0, skipped: 0, telemetryFlushed: 0 };
+  const startedAt = Date.now();
+  const counts = { created: 0, updated: 0, deleted: 0, attachments: 0, rejected: 0 };
+  runErrors = [];
+  runAttachments = 0;
+  stopReason = 'completed';
 
   const net = await Network.getNetworkStateAsync();
   if (!net.isConnected) return result;
@@ -428,14 +404,19 @@ export async function runSync(): Promise<SyncResult> {
      WHERE a.sync_status = 'PENDING' AND r.gks_id IS NOT NULL AND r.is_deleted = 0`
   );
   for (const row of orphanedAttachmentRecords) {
-    await uploadAttachments(baseUrl, row.edge_id, row.gks_id);
+    await uploadAttachments(baseUrl, row.edge_id);
   }
 
   const deltas = getPendingDeltas();
   for (const delta of deltas) {
     const outcome = await syncDelta(baseUrl, delta);
     if (outcome === 'stop') break;
-    if (outcome === 'ok') result.synced++;
+    if (outcome === 'ok') {
+      result.synced++;
+      if (delta.operation === 'CREATE') counts.created++;
+      else if (delta.operation === 'UPDATE') counts.updated++;
+      else if (delta.operation === 'DELETE') counts.deleted++;
+    }
     else if (outcome === 'fail') result.failed++;
     else result.skipped++;
   }
@@ -446,6 +427,13 @@ export async function runSync(): Promise<SyncResult> {
 
   // last_synced_at written after verifyChecksums (even if verification fails internally)
   await set(KEYS.LAST_SYNCED_AT, new Date().toISOString());
+
+  // Device health for this run; queued now and sent with the next run's batch
+  // (GKS records last-sync time itself from the sync-status call above).
+  counts.attachments = runAttachments;
+  counts.rejected = runErrors.length;
+  telemetry.syncRun({ result: stopReason, durationMs: Date.now() - startedAt, counts });
+  for (const code of runErrors) telemetry.error(code);
 
   return result;
 }

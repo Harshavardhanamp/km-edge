@@ -158,72 +158,50 @@ WHERE ra.edge_id = ?
 
 Attachments that are already `SYNCED` or `FAILED` are skipped. Attachments in `FAILED` state require a user-initiated retry.
 
-### 4.2 Upload Call
+> **Superseded 2026-10-06 (K5).** The V2 draft uploaded to `/api/v1/attachments/workflow/NEW_ENTRY` with `entity_ref`, compared the checksum on the phone, then bound with a second POST. GKS contract v1 §6 replaces that with one atomic call; the text below is current.
 
-```typescript
-const result = await FileSystem.uploadAsync(
-  `${GKS_SERVER_URL}/api/v1/attachments/workflow/NEW_ENTRY`,
-  `${FileSystem.documentDirectory}${blobPath(sha256)}`,
-  {
-    httpMethod: 'POST',
-    uploadType: FileSystem.FileSystemUploadType.MULTIPART,
-    fieldName: 'file',
-    parameters: { entity_ref: gks_record_id },
-    headers: buildAuthHeaders(),
-  }
-);
-```
+### 4.2 Upload Call (`gksClient.uploadAttachment`)
 
-Field names are fixed: `file` for the binary part, `entity_ref` for the GKS record ID. These must match the GKS multipart parser — do not rename them.
-
-### 4.3 SHA-256 Comparison
-
-On a 200 or 201 response:
-
-```typescript
-const body = JSON.parse(result.body);
-if (body.sha256 !== localSha256) {
-  await db.runAsync(
-    `UPDATE attachments SET sync_status = 'FAILED', sync_error = 'CHECKSUM_MISMATCH'
-     WHERE edge_attachment_id = ?`,
-    edgeAttachmentId
-  );
-  return; // do not proceed to bind
-}
-```
-
-GKS computes SHA-256 server-side on receipt. A mismatch indicates corruption in transit or a filesystem error. The attachment is marked `FAILED` and surfaced in StatusDetailScreen.
-
-### 4.4 Bind Call
-
-On checksum match:
+One multipart call stores the file and binds it to the record:
 
 ```
-POST /api/v1/attachments/records/{gks_record_id}/attachments/{gks_attachment_id}
+POST /api/v1/edge/records/{edge_id}/attachments
+parts: file, edge_attachment_id, sha256, original_filename, mime_type
+headers: Authorization: Bearer, X-Edge-Contract-Version, X-Edge-Device-Id
 ```
 
-`gks_attachment_id` is extracted from the upload response body. This call associates the uploaded blob with the GKS record. The GKS endpoint is idempotent — re-binding the same attachment is safe.
+The JSON `Content-Type` default from `edgeHeaders` is removed so `uploadAsync` can set the multipart boundary. The path uses the phone's `edge_id`; the server resolves it per user. There is no separate bind call.
 
-### 4.5 DB Updates on Success
+### 4.3 Checksum
+
+GKS recomputes SHA-256 and answers `400 EDGE_CHECKSUM_MISMATCH` if it differs from the `sha256` part. The phone no longer compares hashes itself.
+
+### 4.4 DB Updates on Success
+
+`201 ACCEPTED` or `200 ALREADY_SYNCED` (replay — same hash already bound):
 
 ```sql
 UPDATE attachments
-SET gks_attachment_id = ?,
-    sync_status = 'SYNCED',
-    sync_error = NULL
+SET gks_attachment_id = ?, scan_status = ?, sync_status = 'SYNCED', sync_error = NULL
 WHERE edge_attachment_id = ?
 ```
 
-### 4.6 DB Updates on Failure
+`scan_status` (migration 005) is the scanner result GKS stored (`NOT_SCANNED`, `CLEAN`, …). Each stored file adds one to the run's `counts.attachments` telemetry.
 
-| Condition | sync_status | sync_error |
-|---|---|---|
-| Network error / timeout | `PENDING` (unchanged) | (unchanged) |
-| GKS 400 permanent rejection | `FAILED` | GKS error reason |
-| Checksum mismatch | `FAILED` | `'CHECKSUM_MISMATCH'` |
-| File type not supported | `FAILED` | `'FILE_TYPE_NOT_SUPPORTED'` |
+### 4.5 DB Updates on Failure
 
-Transient failures (`PENDING`) retry automatically on the next sync pass. `FAILED` attachments require explicit user retry.
+| Condition | sync_status | sync_error | Run |
+|---|---|---|---|
+| Network error / timeout | `PENDING` | unchanged | stop this record's uploads |
+| `EDGE_SESSION_EXPIRED` / `_REVOKED` / `EDGE_CONTRACT_UNSUPPORTED` | `PENDING` | unchanged | stop this record's uploads |
+| `EDGE_CHECKSUM_MISMATCH`, `EDGE_FILE_TYPE_NOT_SUPPORTED`, `EDGE_FILE_TOO_LARGE`, `EDGE_RECORD_ATTACHMENT_LIMIT`, `EDGE_VALIDATION` (incl. failed scan), `EDGE_NOT_FOUND` | `FAILED` | the contract code | continue; code counted as rejected + `error` telemetry |
+| `RATE_LIMITED`, `EDGE_TEST_MODE_ACTIVE`, `EDGE_SERVER_ERROR` | `PENDING` | unchanged | continue |
+
+`FAILED` attachments need the user to remove or replace the file.
+
+### 4.6 Capabilities-driven validation
+
+`attachments/validate.ts` checks a new file against the cached `capabilities.attachments` (`allowed_extensions`, `max_file_bytes`, `max_record_total_bytes`, `max_files_per_record`) before it is saved. An empty list or a `0` limit means "not provided", and the built-in defaults apply. Before the first capabilities fetch the defaults apply too.
 
 ---
 

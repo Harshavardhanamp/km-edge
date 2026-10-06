@@ -23,8 +23,6 @@ import {
   updateRecord,
 } from '../lib/db/recordStore';
 import { updateEvent } from '../lib/calendar';
-import { telemetry } from '../lib/telemetry';
-import { useScreenTracking } from '../lib/useScreenTracking';
 import type { EdgeRecord, CaptureKind, RecordType } from '../lib/types';
 import { CAPTURE_TYPES } from '../lib/types';
 import type { AppStackParamList } from '../navigation/AppStack';
@@ -32,8 +30,6 @@ import type { AppStackParamList } from '../navigation/AppStack';
 type Props = NativeStackScreenProps<AppStackParamList, 'RecordDetail'>;
 
 export default function RecordDetailScreen({ navigation, route }: Props) {
-  useScreenTracking('RecordDetailScreen');
-
   const { edge_id } = route.params;
   const [record, setRecord] = useState<EdgeRecord | null>(null);
   const [editingTitle, setEditingTitle] = useState(false);
@@ -107,7 +103,6 @@ export default function RecordDetailScreen({ navigation, route }: Props) {
       capture_kind: newKind ?? r.capture_kind,
     } : r);
     setDirty(false);
-    telemetry.action('record_save', { edge_id });
   }
 
   function handleDelete() {
@@ -125,7 +120,6 @@ export default function RecordDetailScreen({ navigation, route }: Props) {
         style: 'destructive',
         onPress: async () => {
           await softDeleteRecord(edge_id);
-          telemetry.action('record_delete', { edge_id });
           navigation.goBack();
         },
       },
@@ -229,7 +223,6 @@ export default function RecordDetailScreen({ navigation, route }: Props) {
         onSelect={(type, kind) => {
           setShowTypePicker(false);
           saveChanges(title, content, type, kind);
-          telemetry.action('record_type_change', { edge_id, new_type: type });
         }}
         onDismiss={() => setShowTypePicker(false)}
       />

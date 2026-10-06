@@ -1,9 +1,21 @@
 # Design: Observability
 
 **Date:** 2026-09-29  
-**Status:** Frozen  
+**Status:** Superseded 2026-10-06 by ADR-0013 and GKS contract v1 §7 (implemented in K5). Kept for history.  
 **Author:** Harshavardhana P  
 **Requirement:** REQ-0008
+
+## Current behaviour (K5, 2026-10-06)
+
+`src/lib/telemetry.ts` records device sync health only:
+
+- `telemetry.syncRun({ result, durationMs, counts })` — once per `runSync`: `completed | aborted_network | aborted_auth`, a duration bucket (`lt1s | lt5s | lt30s | gte30s`) and counts (`created, updated, deleted, attachments, rejected`).
+- `telemetry.error(category)` — a contract §8 code or `network | storage | contract | other`. Anything else becomes `other`; messages, stacks and screens are never stored. `ErrorBoundary` and the global error handler record `other`.
+- `capture_count` (`by_type` over live records of contract types) is computed when a batch is built, not stored per capture.
+
+Rows carry no user, session, device or record id; GKS derives identity from the bearer session. `flushTelemetry` sends ≤ 200 events to `POST /api/v1/edge/telemetry` and marks rows transmitted only after `200`. A `422 EDGE_VALIDATION` batch is dropped so it can't block later ones. Other failures keep the rows queued. Legacy rows outside the vocabulary are deleted, never sent. Screen tracking (`useScreenTracking`), session start/end and action events are removed.
+
+The rest of this document describes the superseded REQ-0008 design.
 
 ---
 

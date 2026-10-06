@@ -1,3 +1,4 @@
+import * as FileSystem from 'expo-file-system';
 import { EDGE_CONTRACT_VERSION, edgeHeaders, type Capabilities, type EdgeResult, type LoginResponse, type MeResponse } from './contract';
 import { KEYS, get, set } from './secureStore';
 
@@ -181,4 +182,52 @@ export async function postTelemetry(baseUrl: string, events: unknown[]): Promise
     method: 'POST',
     body: JSON.stringify({ events }),
   }, token ?? undefined);
+}
+
+export interface AttachmentUpload {
+  edge_attachment_id: string;
+  sha256: string;
+  original_filename: string;
+  mime_type: string;
+  fileUri: string;
+}
+
+export interface AttachmentUploadResponse {
+  state: 'ACCEPTED' | 'ALREADY_SYNCED';
+  gks_attachment_id: string;
+  sha256: string;
+  size_bytes: number;
+  scan_status: string;
+}
+
+/** Contract §6: one multipart call stores and binds the file to the record. */
+export async function uploadAttachment(baseUrl: string, edgeId: string, att: AttachmentUpload): Promise<EdgeResult<AttachmentUploadResponse>> {
+  const token = await get(KEYS.EDGE_TOKEN);
+  // uploadAsync sets the multipart Content-Type (with boundary); the JSON default must not override it.
+  const headers = await deviceHeaders(token ?? undefined);
+  delete headers['Content-Type'];
+  let res: { status: number; body: string };
+  try {
+    res = await FileSystem.uploadAsync(`${baseUrl}/api/v1/edge/records/${encodeURIComponent(edgeId)}/attachments`, att.fileUri, {
+      httpMethod: 'POST',
+      uploadType: FileSystem.FileSystemUploadType.MULTIPART,
+      fieldName: 'file',
+      headers,
+      parameters: {
+        edge_attachment_id: att.edge_attachment_id,
+        sha256: att.sha256,
+        original_filename: att.original_filename,
+        mime_type: att.mime_type,
+      },
+    });
+  } catch {
+    return { ok: false, network: true };
+  }
+  let body: any = null;
+  try { body = JSON.parse(res.body); } catch { /* non-JSON body */ }
+  if (res.status >= 200 && res.status < 300 && body) return { ok: true, status: res.status, body };
+  const code: string = body?.error?.code ?? body?.code ?? 'EDGE_SERVER_ERROR';
+  if (res.status === 401) emitSessionInvalid(code);
+  if (res.status === 426) await set(KEYS.CONTRACT_BLOCK, JSON.stringify(body ?? { code }));
+  return { ok: false, error: { code, status: res.status, message: body?.error?.message ?? `HTTP ${res.status}`, details: body?.details } };
 }

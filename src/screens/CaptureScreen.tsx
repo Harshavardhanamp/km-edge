@@ -18,8 +18,6 @@ import { sha256String } from '../lib/crypto';
 import { createRecord } from '../lib/db/recordStore';
 import { createEvent, requestCalendarPermission } from '../lib/calendar';
 import { deriveTitle } from '../lib/titleDerive';
-import { telemetry } from '../lib/telemetry';
-import { useScreenTracking } from '../lib/useScreenTracking';
 import {
   CAPTURE_TYPES,
   type CaptureKind,
@@ -48,8 +46,6 @@ function uuidv7(): string {
 }
 
 export default function CaptureScreen({ navigation, route }: Props) {
-  useScreenTracking('CaptureScreen');
-
   const initialKind: CaptureKind = (route.params as any)?.captureKind ?? 'JOURNAL';
   const initialType: RecordType = (route.params as any)?.recordType ?? 'KNOWLEDGE';
 
@@ -136,7 +132,6 @@ export default function CaptureScreen({ navigation, route }: Props) {
       event_end: captureKind === 'EVENT' && eventEnd ? eventEnd.toISOString() : null,
     });
 
-    telemetry.action('record_save', { type: recordType, capture_kind: captureKind });
     setSaving(false);
     navigation.replace('RecordDetail', { edge_id });
   }

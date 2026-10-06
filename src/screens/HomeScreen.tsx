@@ -12,12 +12,9 @@ import TypePickerSheet from '../components/TypePickerSheet';
 import { getRecentRecords } from '../lib/db/recordStore';
 import { getUpcomingEvents, requestCalendarPermission, type CalendarEvent } from '../lib/calendar';
 import { KEYS, get } from '../lib/secureStore';
-import { useScreenTracking } from '../lib/useScreenTracking';
 import { CAPTURE_TYPES, type CaptureKind, type EdgeRecord, type RecordType } from '../lib/types';
 
 export default function HomeScreen({ navigation }: any) {
-  useScreenTracking('HomeScreen');
-
   const [displayName, setDisplayName] = useState('');
   const [recentRecords, setRecentRecords] = useState<EdgeRecord[]>([]);
   const [upcomingEvents, setUpcomingEvents] = useState<CalendarEvent[]>([]);

@@ -8,8 +8,18 @@ import {
   type AttachmentMeta,
 } from '../db/attachmentStore';
 import { updateRecord } from '../db/recordStore';
-import { telemetry } from '../telemetry';
-import { validateFile, validateRecordLimits } from './validate';
+import { validateFile, validateRecordLimits, type AttachmentLimits } from './validate';
+import { KEYS, get } from '../secureStore';
+
+/** Cached GKS capabilities (written by gksClient.capabilities); undefined before first discovery. */
+async function serverLimits(): Promise<AttachmentLimits | undefined> {
+  try {
+    const json = await get(KEYS.CAPABILITIES_JSON);
+    return json ? JSON.parse(json)?.attachments : undefined;
+  } catch {
+    return undefined;
+  }
+}
 import { compressImage } from './compress';
 
 export type AttachmentSource = 'camera' | 'gallery' | 'files' | 'scan';
@@ -30,12 +40,13 @@ export async function addAttachment(
   recordEdgeId: string,
   file: IncomingFile
 ): Promise<{ ok: true; edge_attachment_id: string } | { ok: false; reason: string }> {
-  const fileCheck = validateFile({ name: file.name, size: file.size });
+  const limits = await serverLimits();
+  const fileCheck = validateFile({ name: file.name, size: file.size }, limits);
   if (!fileCheck.ok) return fileCheck;
 
   const existing = getAttachmentsForRecord(recordEdgeId);
   const totalBytes = existing.reduce((s, a) => s + a.size_bytes, 0);
-  const limitsCheck = validateRecordLimits(existing.length, totalBytes, file.size);
+  const limitsCheck = validateRecordLimits(existing.length, totalBytes, file.size, limits);
   if (!limitsCheck.ok) return limitsCheck;
 
   let workUri = file.uri;
@@ -62,7 +73,6 @@ export async function addAttachment(
 
   linkAttachment(recordEdgeId, edge_attachment_id);
   updateRecord(recordEdgeId, {});
-  telemetry.action('attachment_add', { record: recordEdgeId });
 
   return { ok: true, edge_attachment_id };
 }
@@ -73,7 +83,6 @@ export async function removeAttachment(
 ): Promise<void> {
   await unlinkAttachment(recordEdgeId, edgeAttachmentId);
   updateRecord(recordEdgeId, {});
-  telemetry.action('attachment_remove', { record: recordEdgeId });
 }
 
 export function getAttachments(recordEdgeId: string): AttachmentMeta[] {

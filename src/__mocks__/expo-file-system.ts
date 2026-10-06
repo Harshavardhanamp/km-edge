@@ -10,8 +10,22 @@ export function __setFileExists(path: string, exists: boolean) {
   else _files.delete(path);
 }
 
+type UploadHandler = (url: string, uri: string, opts: any) => Promise<{ status: number; body: string }>;
+const _noUpload: UploadHandler = async () => { throw new Error('network'); };
+let _upload: UploadHandler = _noUpload;
+
+/** Tests set how uploadAsync answers; the default behaves like no network. */
+export function __setUpload(fn: UploadHandler) {
+  _upload = fn;
+}
+
 export function __reset() {
   _files.clear();
+  _upload = _noUpload;
+}
+
+export async function uploadAsync(url: string, uri: string, opts: any) {
+  return _upload(url, uri, opts);
 }
 
 export async function getInfoAsync(path: string): Promise<{ exists: boolean; size?: number }> {

@@ -4,11 +4,8 @@ import { useGksProbe } from '../lib/gksProbe';
 import { db } from '../lib/db/index';
 import { KEYS, get } from '../lib/secureStore';
 import { runSync, type SyncResult } from '../lib/sync/syncEngine';
-import { useScreenTracking } from '../lib/useScreenTracking';
 
 export default function StatusDetailScreen({ navigation }: any) {
-  useScreenTracking('StatusDetailScreen');
-
   const { reachable, lastProbeAt } = useGksProbe();
   const [gksUrl, setGksUrl] = useState<string>('');
   const [pendingCount, setPendingCount] = useState(0);

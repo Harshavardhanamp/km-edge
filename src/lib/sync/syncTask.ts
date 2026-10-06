@@ -9,12 +9,11 @@ export const SYNC_TASK = 'km-edge-sync';
 TaskManager.defineTask(SYNC_TASK, async () => {
   try {
     const result = await runSync();
-    telemetry.action('record_save', { sync_run: result });
     return result.synced > 0 || result.telemetryFlushed > 0
       ? BackgroundFetch.BackgroundFetchResult.NewData
       : BackgroundFetch.BackgroundFetchResult.NoData;
-  } catch (e: any) {
-    telemetry.error({ error_code: 'SYNC_TASK_ERROR', message: e?.message ?? 'unknown' });
+  } catch {
+    telemetry.error('other'); // category only — never the message
     return BackgroundFetch.BackgroundFetchResult.Failed;
   }
 });

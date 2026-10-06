@@ -16,12 +16,8 @@ export default class ErrorBoundary extends React.Component<
     return { hasError: true };
   }
 
-  componentDidCatch(error: Error) {
-    telemetry.error({
-      error_code: 'RENDER_ERROR',
-      message: error.message,
-      is_crash: true,
-    });
+  componentDidCatch() {
+    telemetry.error('other'); // category only — no message, stack or screen leaves the device
   }
 
   render() {

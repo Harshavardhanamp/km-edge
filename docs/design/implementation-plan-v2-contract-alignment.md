@@ -73,6 +73,8 @@ Per ADR-0006: follow the steps in order; any deviation is surfaced before procee
 
 **Tests:** `attachments.test.ts` (ok/replay/bad-type/checksum/limit/network), `telemetry.test.ts` (vocabulary only, no ids, 200 marks transmitted).
 
+**Status (2026-10-06):** implemented, not yet accepted (tests run on the test machine). As built: migration 005 adds `attachments.scan_status`. The multipart upload drops the JSON `Content-Type` header. Attachment rejections are stored as the contract code. A `422` telemetry batch is dropped rather than retried forever. `CHECKSUM_MISMATCH` became `EDGE_CHECKSUM_MISMATCH`. `contract.ts` gained `EDGE_ERROR_CATALOGUE`, mirroring GKS. Design updates: `observability.md` (current behaviour), `v2-attachment-sync.md` §4.
+
 ## K6 — Status and Home UX
 
 1. `StatusDetailScreen.tsx`: plain-word sections, mapped sentences, conditional Retry, "Sync now".
