@@ -1,4 +1,5 @@
-export const EDGE_CONTRACT_VERSION = 1;
+// KK-2.2 E2: contract v2 — structure at capture, identity bootstrap, suggestions, envelope-only errors.
+export const EDGE_CONTRACT_VERSION = 2;
 
 export interface EdgeError {
   code: string;
@@ -28,7 +29,9 @@ export interface Capabilities {
     max_tags: number;
     max_tag_chars: number;
     max_batch_telemetry_events: number;
+    max_identities_per_page?: number;   // v2
   };
+  suggest?: { deadline_hint_ms: number };   // v2
   record_types: string[];
   life_areas: string[];
   session: { absolute_seconds: number };
@@ -70,4 +73,29 @@ export const EDGE_ERROR_CATALOGUE: readonly string[] = [
   'RATE_LIMITED', 'EDGE_VALIDATION', 'EDGE_CONTENT_TOO_LONG', 'EDGE_TYPE_INVALID', 'EDGE_TYPE_LOCKED',
   'EDGE_CHECKSUM_MISMATCH', 'EDGE_RECORD_DELETED', 'EDGE_NOT_FOUND', 'EDGE_FILE_TYPE_NOT_SUPPORTED',
   'EDGE_FILE_TOO_LARGE', 'EDGE_RECORD_ATTACHMENT_LIMIT', 'EDGE_TEST_MODE_ACTIVE', 'EDGE_SERVER_ERROR',
+  // Contract v2 §10: informational, reported inside a create/update `resolution` list.
+  'EDGE_IDENTITY_NOT_FOUND',
 ];
+
+/** Contract v2 §4. */
+export interface IdentityPage {
+  contract_version: 2;
+  items: { identity_id: string; kind: 'topic' | 'place' | 'person'; name: string; distinction: string | null }[];
+  total: number;
+  next: string | null;
+}
+
+/** Contract v2 §5. Identities are either a cached id or a proposed new name. */
+export type SuggestedIdentity = { identity_id: string } | { proposed_name: string };
+export interface SuggestResponse {
+  contract_version: 2;
+  title: string;
+  summary: string | null;
+  type: string;
+  importance: string;
+  topics: SuggestedIdentity[];
+  people: SuggestedIdentity[];
+  place: SuggestedIdentity | null;
+  dates: { phrase: string; needs_year: boolean; group_id: string | null; date: string | null }[];
+  generated: boolean;
+}

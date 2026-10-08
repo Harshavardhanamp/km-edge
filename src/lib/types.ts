@@ -34,6 +34,24 @@ export interface Attachment {
   gks_attachment_id: string | null;
 }
 
+// KK-2.2 E2 (GKS contract v2): structure entered on the review card.
+export type FieldOrigin = 'human' | 'accepted_ai_suggestion' | 'edited_ai_suggestion';
+export type OriginField = 'title' | 'summary' | 'type' | 'importance' | 'topics' | 'people' | 'place' | 'dates';
+/** A name chosen from the identity cache (identity_id + its name) or typed (label only). */
+export interface IdentityRef { identity_id?: string; label: string }
+/** A detected phrase's confirmed year (group_id + year), or an exact date the human added. */
+export interface DateRef { phrase?: string; date?: string; year?: number; group_id?: string }
+export interface CaptureStructure {
+  summary: string | null;
+  topics: IdentityRef[];
+  people: IdentityRef[];
+  place: IdentityRef | null;
+  dates: DateRef[];
+  origins: Partial<Record<OriginField, FieldOrigin>>;
+}
+/** Names GKS could not match yet (create/update `resolution`, sync-status `pending`). */
+export interface ResolutionItem { field: 'topics' | 'people' | 'place' | 'dates'; label: string; reason: string }
+
 // Edge record envelope — strict subset of GKS frontmatter.
 // Fields GKS stamps at ingest (id, security_zone, provenance, created_by_*) are absent here.
 export interface EdgeRecord {
@@ -58,6 +76,8 @@ export interface EdgeRecord {
   sync_status: SyncStatus;
   sync_error: string | null;     // populated when sync_status === 'REJECTED'
   content_sha256: string;
+  structure?: CaptureStructure | null;   // KK-2.2 E2; null for captures made before contract v2
+  resolution?: ResolutionItem[];         // what the desktop still has to match
 }
 
 // Mapping from user-facing label → GKS type + capture_kind

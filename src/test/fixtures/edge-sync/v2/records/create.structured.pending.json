@@ -1,0 +1,89 @@
+{
+  "name": "records.create.structured.pending",
+  "request": {
+    "method": "POST",
+    "path": "/api/v1/edge/records",
+    "headers": {
+      "Authorization": "Bearer test-token-001",
+      "X-Edge-Contract-Version": "2",
+      "X-Edge-Device-Id": "DEV-E2"
+    },
+    "body": {
+      "edge_id": "e2-160974716f4f",
+      "record_type": "JOURNAL",
+      "content": "Movie night with Pri on 15th March",
+      "content_sha256": "c5d02b5ae01423c70dad2f915c78bda6d8b11569835547e1922ba4035431b0a8",
+      "captured_at": "2026-10-08T09:00:00Z",
+      "title": "Movie night",
+      "title_origin": "accepted_ai_suggestion",
+      "summary": null,
+      "topics": [
+        {
+          "identity_id": "TOPIC-000001",
+          "label": "Family"
+        },
+        {
+          "label": "School"
+        }
+      ],
+      "people": [
+        {
+          "label": "pri"
+        },
+        {
+          "label": "Ravi"
+        }
+      ],
+      "place": {
+        "label": "Mysuru"
+      },
+      "topics_origin": "accepted_ai_suggestion",
+      "people_origin": "edited_ai_suggestion",
+      "place_origin": "human",
+      "dates": [
+        {
+          "group_id": "yearless-1",
+          "year": 2027
+        },
+        {
+          "date": "2027-03-20",
+          "phrase": "booking day"
+        }
+      ],
+      "dates_origin": "human"
+    }
+  },
+  "response": {
+    "status": 201,
+    "body": {
+      "state": "ACCEPTED",
+      "edge_id": "e2-160974716f4f",
+      "gks_id": "KNOW-000001",
+      "content_sha256": "c5d02b5ae01423c70dad2f915c78bda6d8b11569835547e1922ba4035431b0a8",
+      "pending_labels": [
+        "School"
+      ],
+      "resolution": [
+        {
+          "field": "topics",
+          "label": "School",
+          "reason": "ambiguous"
+        },
+        {
+          "field": "people",
+          "label": "Ravi",
+          "reason": "unmatched"
+        },
+        {
+          "field": "place",
+          "label": "Mysuru",
+          "reason": "unmatched"
+        }
+      ],
+      "contract_version": 2
+    }
+  },
+  "preconditions": [
+    "Family exists once; School exists twice with distinctions; Priya has alias Pri; no Ravi, no Mysuru"
+  ]
+}

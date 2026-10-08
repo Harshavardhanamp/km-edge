@@ -1,0 +1,43 @@
+{
+  "name": "identities.page.first",
+  "request": {
+    "method": "GET",
+    "path": "/api/v1/edge/identities?limit=3",
+    "headers": {
+      "Authorization": "Bearer test-token-001",
+      "X-Edge-Contract-Version": "2",
+      "X-Edge-Device-Id": "DEV-E2"
+    }
+  },
+  "response": {
+    "status": 200,
+    "body": {
+      "contract_version": 2,
+      "items": [
+        {
+          "identity_id": "TOPIC-000001",
+          "kind": "topic",
+          "name": "Family",
+          "distinction": null
+        },
+        {
+          "identity_id": "TOPIC-000002",
+          "kind": "topic",
+          "name": "School",
+          "distinction": "Avyu's"
+        },
+        {
+          "identity_id": "TOPIC-000003",
+          "kind": "topic",
+          "name": "School",
+          "distinction": "Nikhil's"
+        }
+      ],
+      "total": 6,
+      "next": "topic:TOPIC-000003:School"
+    }
+  },
+  "preconditions": [
+    "topics Family, School (Avyu's), School (Nikhil's); person Priya alias Pri; private topics of two users"
+  ]
+}

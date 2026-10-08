@@ -1,5 +1,6 @@
 import { resetDb } from './helpers/setupDb';
 import { db } from '../lib/db/index';
+import { MIGRATIONS } from '../lib/db/migrations';
 
 beforeEach(resetDb);
 
@@ -16,8 +17,9 @@ function appliedVersions(): number[] {
 }
 
 describe('schema_migrations', () => {
-  test('all four migrations recorded', () => {
-    expect(appliedVersions()).toEqual([1, 2, 3, 4]);
+  test('every migration is recorded', () => {
+    // Was [1, 2, 3, 4], stale since K5 added 005; derived from the list so new migrations are covered.
+    expect(appliedVersions()).toEqual(MIGRATIONS.map(m => m.version));
   });
 });
 

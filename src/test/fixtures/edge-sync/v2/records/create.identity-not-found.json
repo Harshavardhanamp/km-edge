@@ -1,0 +1,48 @@
+{
+  "name": "records.create.identity-not-found",
+  "request": {
+    "method": "POST",
+    "path": "/api/v1/edge/records",
+    "headers": {
+      "Authorization": "Bearer test-token-001",
+      "X-Edge-Contract-Version": "2",
+      "X-Edge-Device-Id": "DEV-E2"
+    },
+    "body": {
+      "edge_id": "e2-0e7ed2d3de56",
+      "record_type": "JOURNAL",
+      "content": "Dinner",
+      "content_sha256": "216713d08860cfa0d9787ea5c6cebc8a8f5b73777f91c904853ac234bb9df642",
+      "captured_at": "2026-10-08T09:00:00Z",
+      "title": "Movie night",
+      "title_origin": "accepted_ai_suggestion",
+      "topics": [
+        {
+          "identity_id": "TOPIC-999999",
+          "label": "Family"
+        }
+      ]
+    }
+  },
+  "response": {
+    "status": 201,
+    "body": {
+      "state": "ACCEPTED",
+      "edge_id": "e2-0e7ed2d3de56",
+      "gks_id": "KNOW-000001",
+      "content_sha256": "216713d08860cfa0d9787ea5c6cebc8a8f5b73777f91c904853ac234bb9df642",
+      "resolution": [
+        {
+          "field": "topics",
+          "label": "Family",
+          "reason": "identity_not_found",
+          "code": "EDGE_IDENTITY_NOT_FOUND"
+        }
+      ],
+      "contract_version": 2
+    }
+  },
+  "preconditions": [
+    "TOPIC-999999 was deleted or merged; Family exists once"
+  ]
+}

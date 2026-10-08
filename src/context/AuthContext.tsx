@@ -1,6 +1,10 @@
 import React, { createContext, useCallback, useContext, useEffect, useState } from 'react';
 import { KEYS, clearSession, get, set } from '../lib/secureStore';
+import { AppState } from 'react-native';
 import { onSessionInvalid } from '../lib/gksClient';
+import { clearIdentities } from '../lib/db/identityCache';
+import { clearCaptureDraft } from '../lib/db/captureDraft';
+import { refreshIdentityCache } from '../lib/sync/identityRefresh';
 
 interface AuthSession {
   userId: string;
@@ -40,9 +44,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     return onSessionInvalid(async () => {
       await clearSession();
+      clearIdentities();   // KK-2.2 E3.3: the cache belongs to the session; an unfinished draft is kept
       setSession(null);
     });
   }, []);
+
+  // KK-2.2 E3.2: refresh the identity-name cache when the app comes to the foreground.
+  useEffect(() => {
+    if (!session || session.offline) return;
+    const refresh = async () => {
+      const baseUrl = await get(KEYS.GKS_SERVER_URL);
+      if (baseUrl) await refreshIdentityCache(baseUrl).catch(() => false);
+    };
+    void refresh();
+    const sub = AppState.addEventListener('change', next => { if (next === 'active') void refresh(); });
+    return () => sub.remove();
+  }, [session]);
 
   const login = useCallback((s: AuthSession) => {
     if (s.displayName) set(KEYS.GKS_USERNAME, s.displayName);
@@ -51,6 +68,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const logout = useCallback(async () => {
     await clearSession();
+    clearIdentities();     // KK-2.2 E3.3
+    clearCaptureDraft();   // E-D1: a draft does not outlive its user's sign-out
     setSession(null);
   }, []);
 

@@ -1,0 +1,56 @@
+{
+  "name": "suggest.ok",
+  "request": {
+    "method": "POST",
+    "path": "/api/v1/edge/suggest",
+    "headers": {
+      "Authorization": "Bearer test-token-001",
+      "X-Edge-Contract-Version": "2",
+      "X-Edge-Device-Id": "DEV-E2"
+    },
+    "body": {
+      "content": "Movie night with Priya and Ravi on 15th March"
+    }
+  },
+  "response": {
+    "status": 200,
+    "body": {
+      "contract_version": 2,
+      "title": "Movie night",
+      "summary": null,
+      "type": "EVENT",
+      "importance": "NORMAL",
+      "topics": [
+        {
+          "identity_id": "TOPIC-000001"
+        },
+        {
+          "proposed_name": "Movies"
+        }
+      ],
+      "people": [
+        {
+          "identity_id": "PER-000001"
+        },
+        {
+          "proposed_name": "Ravi"
+        }
+      ],
+      "place": {
+        "proposed_name": "Mysuru"
+      },
+      "dates": [
+        {
+          "phrase": "15th March",
+          "needs_year": true,
+          "group_id": "yearless-1",
+          "date": null
+        }
+      ],
+      "generated": true
+    }
+  },
+  "preconditions": [
+    "topic Family and person Priya exist; the local model is available"
+  ]
+}

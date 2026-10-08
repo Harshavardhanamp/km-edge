@@ -96,6 +96,12 @@ export const edgeErrorMap: Record<string, ErrorEntry> = {
     action: 'none',
     retryable: true,
   },
+  // Contract v2 §10: informational only — the capture landed; the name is matched on the desktop.
+  EDGE_IDENTITY_NOT_FOUND: {
+    sentence: '',
+    action: 'none',
+    retryable: false,
+  },
   INVALID_LOGIN: {
     sentence: 'Incorrect username or password.',
     action: 'none',

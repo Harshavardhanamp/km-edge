@@ -1,5 +1,16 @@
 # Changelog
 
+## 2.1.0 — Unreleased (KK-2.2 Packet E2: structure at capture, Edge Sync Contract v2; tag `v2.1.0` after `v2.0.0` and the 2.1 device run; requires Kashyap's Knowledge 2.7.0)
+
+- **Review card before saving:** Save opens a card with title, summary, type, importance, Topics, People, Place, dates and visibility. Confirm needs at least one Topic, Person or Place, and a year on every date. Discard asks first.
+- **Names offline:** a cached list of names (Household names plus your own Private ones) from `GET /api/v1/edge/identities`, refreshed after each sync and when the app returns to the foreground, cleared on sign-out. Names you type that are not in the list are sent as labels and matched by the desktop.
+- **Suggestions:** `POST /api/v1/edge/suggest` fills empty fields within 3 seconds. Otherwise the card says "taking a while", "unavailable" or "Offline" and you fill it in yourself. Fields you have touched are never overwritten.
+- **Unfinished capture kept:** the card is saved as you go and reopens after the app is closed. It is cleared by Confirm, Discard or sign-out.
+- **Record page** lists Topics, People and Place, and "Waiting for the desktop to match: …" until the desktop links them.
+- **Contract v2** (`X-Edge-Contract-Version: 2`); new error code `EDGE_IDENTITY_NOT_FOUND` (silent, informational). A server that supports only v1 shows "Ask your administrator to update Kashyap’s Knowledge." (426 `server_too_old`).
+- Local database migration 006 (additive): `records.structure_json`, `records.resolution_json`, `identity_cache`, `capture_draft`.
+- Pinned v2 fixtures in `src/test/fixtures/edge-sync/v2/`.
+
 ## 2.0.0 — Release candidate (GKS sync, contract v1; tag `v2.0.0` after device acceptance)
 
 Requires Kashyap's Knowledge 2.1.0. Requirements: REQ-0013. Decisions: ADR-0011–0015. Plan: `docs/design/implementation-plan-v2-contract-alignment.md` (K0–K7).

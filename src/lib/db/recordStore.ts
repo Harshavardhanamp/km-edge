@@ -31,6 +31,13 @@ type RecordRow = {
   native_calendar_event_id: string | null;
   has_calendar_entry: number;
   reminder_minutes: number | null;
+  structure_json?: string | null;
+  resolution_json?: string | null;
+};
+
+const parseJson = <T,>(value: string | null | undefined, fallback: T): T => {
+  if (!value) return fallback;
+  try { return JSON.parse(value) as T; } catch { return fallback; }
 };
 
 function rowToRecord(row: RecordRow): EdgeRecord {
@@ -56,7 +63,14 @@ function rowToRecord(row: RecordRow): EdgeRecord {
     sync_status: row.sync_status as SyncStatus,
     sync_error: null,
     content_sha256: row.content_sha256,
+    structure: parseJson(row.structure_json, null),
+    resolution: parseJson(row.resolution_json, []),
   };
+}
+
+/** KK-2.2 E2: the names GKS has not matched yet for this capture (empty once all linked). */
+export function setResolution(edge_id: string, items: import('../types').ResolutionItem[]): void {
+  db.runSync(`UPDATE records SET resolution_json = ? WHERE edge_id = ?`, JSON.stringify(items), edge_id);
 }
 
 export function createRecord(
@@ -76,8 +90,8 @@ export function createRecord(
         created, author, classification, importance, tags, life_areas, place,
         about, relationships, captured_at, sync_status, content_sha256,
         native_calendar_event_id, has_calendar_entry, reminder_minutes,
-        event_start, event_end
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        event_start, event_end, structure_json
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       record.edge_id,
       record.gks_id,
       record.schema_version,
@@ -101,7 +115,8 @@ export function createRecord(
       record.has_calendar_entry ? 1 : 0,
       record.reminder_minutes ?? null,
       record.event_start ?? null,
-      record.event_end ?? null
+      record.event_end ?? null,
+      record.structure ? JSON.stringify(record.structure) : null
     );
 
     const attachmentRows = db.getAllSync<{ edge_attachment_id: string }>(

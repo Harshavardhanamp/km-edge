@@ -1,0 +1,43 @@
+{
+  "name": "errors.validation",
+  "request": {
+    "method": "POST",
+    "path": "/api/v1/edge/records",
+    "headers": {
+      "Authorization": "Bearer test-token-001",
+      "X-Edge-Contract-Version": "2",
+      "X-Edge-Device-Id": "DEV-E2"
+    },
+    "body": {
+      "edge_id": "e2-5169c954e952",
+      "record_type": "JOURNAL",
+      "content": "Movie night with Pri on 15th March",
+      "content_sha256": "c5d02b5ae01423c70dad2f915c78bda6d8b11569835547e1922ba4035431b0a8",
+      "captured_at": "2026-10-08T09:00:00Z",
+      "title": "Movie night",
+      "title_origin": "guessed",
+      "topics": [
+        {
+          "label": "Family"
+        }
+      ]
+    }
+  },
+  "response": {
+    "status": 422,
+    "body": {
+      "error": {
+        "code": "EDGE_VALIDATION",
+        "message": "The request is not valid.",
+        "details": {
+          "fields": [
+            "title_origin"
+          ]
+        }
+      }
+    }
+  },
+  "preconditions": [
+    "title_origin is not an allowed origin"
+  ]
+}

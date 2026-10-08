@@ -1,7 +1,9 @@
 import * as FileSystem from 'expo-file-system/legacy';
 import * as Network from 'expo-network';
 import { db } from '../db/index';
-import { getRecord, localSoftDelete } from '../db/recordStore';
+import { getRecord, localSoftDelete, setResolution } from '../db/recordStore';
+import type { ResolutionItem } from '../types';
+import { refreshIdentityCache } from './identityRefresh';
 import { purgeAttachment } from '../db/attachmentStore';
 import {
   getPendingDeltas,
@@ -254,6 +256,7 @@ async function syncDelta(baseUrl: string, delta: DeltaEntry): Promise<'ok' | 'fa
       const state = body?.state as string | undefined;
       const gks_id = (body?.gks_id ?? row.gks_id) as string;
       const new_sha = body?.content_sha256 as string | undefined;
+      if (Array.isArray(body?.resolution)) setResolution(delta.edge_id, body.resolution as ResolutionItem[]);
 
       if (state === 'UPDATED' || state === 'ACCEPTED' || state === 'CONFLICT') {
         acknowledgeDelta(delta.seq, gks_id);
@@ -307,6 +310,8 @@ async function syncDelta(baseUrl: string, delta: DeltaEntry): Promise<'ok' | 'fa
   const state = body?.state as string | undefined;
   const gks_id = body?.gks_id as string | undefined ?? '';
   const content_sha = body?.content_sha256 as string | undefined;
+  // Contract v2 §7: names the desktop could not match yet; shown on the record until linked.
+  if (Array.isArray(body?.resolution)) setResolution(delta.edge_id, body.resolution as ResolutionItem[]);
 
   acknowledgeDelta(delta.seq, gks_id);
 
@@ -343,10 +348,11 @@ async function verifyChecksums(baseUrl: string): Promise<boolean> {
   const result = await syncStatus(baseUrl);
   if (!result.ok) return false;
 
-  const data = result.body as { records?: { edge_id: string; gks_id?: string; content_sha256: string }[]; synced_record_count?: number };
+  const data = result.body as { records?: { edge_id: string; gks_id?: string; content_sha256: string; pending?: PendingNames }[]; synced_record_count?: number };
   if (!data?.records) return false;
 
   for (const gksRec of data.records) {
+    if (gksRec.pending) setResolution(gksRec.edge_id, pendingToResolution(gksRec.pending));
     const local = db.getFirstSync<{
       content_sha256: string;
       seq: number;
@@ -388,6 +394,18 @@ async function verifyChecksums(baseUrl: string): Promise<boolean> {
     await set(KEYS.GKS_SYNCED_COUNT, String(data.synced_record_count));
   }
   return true;
+}
+
+type PendingNames = { topics?: string[]; people?: string[]; place?: string | null; dates?: string[] };
+
+/** Contract v2 sync-status `pending` → the record's "waiting for the desktop" list. */
+export function pendingToResolution(pending: PendingNames): ResolutionItem[] {
+  return [
+    ...(pending.topics ?? []).map(label => ({ field: 'topics' as const, label, reason: 'unmatched' })),
+    ...(pending.people ?? []).map(label => ({ field: 'people' as const, label, reason: 'unmatched' })),
+    ...(pending.place ? [{ field: 'place' as const, label: pending.place, reason: 'unmatched' }] : []),
+    ...(pending.dates ?? []).map(label => ({ field: 'dates' as const, label, reason: 'needs_year' })),
+  ];
 }
 
 export async function runSync(): Promise<SyncResult> {
@@ -451,6 +469,7 @@ export async function runSync(): Promise<SyncResult> {
   if (verified && stopReason === 'completed') {
     await set(KEYS.LAST_SYNCED_AT, new Date().toISOString());
     await remove(KEYS.CONTRACT_BLOCK); // the server accepted every call, so the update banner no longer applies
+    await refreshIdentityCache(baseUrl).catch(() => false);  // KK-2.2 E3.2: after every successful sync; never fails the run
   }
 
   // Device health for this run; queued now and sent with the next run's batch

@@ -1,5 +1,5 @@
 import * as FileSystem from 'expo-file-system/legacy';
-import { EDGE_CONTRACT_VERSION, edgeHeaders, type Capabilities, type EdgeResult, type LoginResponse, type MeResponse } from './contract';
+import { EDGE_CONTRACT_VERSION, edgeHeaders, type Capabilities, type EdgeResult, type IdentityPage, type LoginResponse, type MeResponse, type SuggestResponse } from './contract';
 import { KEYS, get, remove, set } from './secureStore';
 
 // Session-invalid event bus — listeners registered by AuthContext.
@@ -175,6 +175,19 @@ export async function updateRecord(baseUrl: string, edgeId: string, envelope: un
 export async function deleteRecord(baseUrl: string, edgeId: string): Promise<EdgeResult<unknown>> {
   const token = await get(KEYS.EDGE_TOKEN);
   return edgeFetchInternal(baseUrl, `/api/v1/edge/records/${edgeId}`, { method: 'DELETE' }, token ?? undefined);
+}
+
+/** Contract v2 §4: one page of Topic / Place / Person names. */
+export async function identities(baseUrl: string, after: string | null, limit = 1000): Promise<EdgeResult<IdentityPage>> {
+  const token = await get(KEYS.EDGE_TOKEN);
+  const qs = `?limit=${limit}${after ? `&after=${encodeURIComponent(after)}` : ''}`;
+  return edgeFetchInternal<IdentityPage>(baseUrl, `/api/v1/edge/identities${qs}`, { method: 'GET' }, token ?? undefined);
+}
+
+/** Contract v2 §5: review-card suggestions (read-only). The caller applies the 3 s deadline (E4.2). */
+export async function suggest(baseUrl: string, content: string, signal?: AbortSignal): Promise<EdgeResult<SuggestResponse>> {
+  const token = await get(KEYS.EDGE_TOKEN);
+  return edgeFetchInternal<SuggestResponse>(baseUrl, '/api/v1/edge/suggest', { method: 'POST', body: JSON.stringify({ content }), signal }, token ?? undefined);
 }
 
 export async function postTelemetry(baseUrl: string, events: unknown[]): Promise<EdgeResult<unknown>> {

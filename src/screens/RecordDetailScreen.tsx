@@ -195,8 +195,19 @@ export default function RecordDetailScreen({ navigation, route }: Props) {
         )}
 
         {/* Optional fields */}
-        {record.tags.length > 0 && (
+        {/* KK-2.2 E2: structure entered at capture, and what the desktop still has to match */}
+        {record.structure ? (
+          <>
+            {record.structure.topics.length > 0 && <Text style={styles.metaLine}>Topics: {record.structure.topics.map(t => t.label).join(', ')}</Text>}
+            {record.structure.people.length > 0 && <Text style={styles.metaLine}>People: {record.structure.people.map(t => t.label).join(', ')}</Text>}
+            {record.structure.place && <Text style={styles.metaLine}>Place: {record.structure.place.label}</Text>}
+            {record.structure.summary && <Text style={styles.metaLine}>Summary: {record.structure.summary}</Text>}
+          </>
+        ) : record.tags.length > 0 && (
           <Text style={styles.metaLine}>Tags: {record.tags.join(', ')}</Text>
+        )}
+        {(record.resolution ?? []).length > 0 && (
+          <Text style={styles.metaLine}>Waiting for the desktop to match: {(record.resolution ?? []).map(r => r.label).join(', ')}</Text>
         )}
         {record.importance !== 'NORMAL' && (
           <Text style={styles.metaLine}>Importance: {record.importance}</Text>

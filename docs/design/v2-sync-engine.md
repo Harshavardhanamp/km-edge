@@ -374,3 +374,15 @@ WHERE a.pending_delete = 1 AND d.status = 'ACKNOWLEDGED'
 ---
 
 *End of document.*
+
+---
+
+## Amendment 2026-10-08 — Structure at capture, contract v2 (KK-2.2 Packet E2)
+
+Source of truth: GKS `docs/design/KK-EDGE-STRUCTURE-AT-CAPTURE-DESIGN.md` (FROZEN 2026-10-08) and `docs/design/KK-EDGE-SYNC-CONTRACT-V2.md`.
+
+- **Contract version.** Every request sends `X-Edge-Contract-Version: 2` (`EDGE_CONTRACT_VERSION`). A 426 `server_too_old` from a server that supports only v1 is shown as "Ask your administrator to update Kashyap’s Knowledge."
+- **Envelope.** CREATE and UPDATE carry `summary`, `topics`, `people`, `place`, `dates` and `*_origin` from `structure_json` (`src/lib/sync/envelope.ts`).
+- **Responses.** The response's `pending` items are stored with `setResolution` (`resolution_json`). They are cleared when GKS reports everything linked.
+- **Identity refresh.** After a verified sync run, `refreshIdentityCache` pages `GET /edge/identities` until `next` is null. The cache is replaced only when every page arrived. A failure never fails the sync (`.catch`).
+- **Errors.** `EDGE_IDENTITY_NOT_FOUND` is informational and silent: GKS has already fallen back to the label.

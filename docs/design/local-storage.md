@@ -205,3 +205,18 @@ ORDER BY seq ASC;
 - When V2 sync runs, it reads all `PENDING` delta entries in `seq` order and transmits them to GKS
 - Soft-deleted records are purged from SQLite only after their DELETE delta entry is `ACKNOWLEDGED` by GKS
 - No schema changes needed in V2 for the storage layer — sync reads what V1 already writes
+
+---
+
+## Amendment 2026-10-08 — Structure at capture (migration 006, KM-Edge 2.1)
+
+`src/lib/db/migrations/006_structure_at_capture.ts` (additive):
+
+| Change | Purpose |
+|---|---|
+| `records.structure_json TEXT` | Card output: summary, topics, people, place, dates, origins |
+| `records.resolution_json TEXT` | Names GKS has not matched yet (from sync responses) |
+| `identity_cache (identity_id, kind, name, name_key, distinction, fetched_at; PK kind+identity_id+name)`, one row per name or alias | Offline name list; replaced as a whole after a full refresh (`lib/db/identityCache.ts`) |
+| `capture_draft (id = 1, payload, updated_at)` | One unfinished capture (`lib/db/captureDraft.ts`) |
+
+Sign-out clears `identity_cache` and `capture_draft`. An expired session clears the cache only. The note above that V2 needs no storage changes is superseded by this migration.

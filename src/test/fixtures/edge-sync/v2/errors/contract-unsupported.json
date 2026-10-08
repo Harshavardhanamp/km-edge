@@ -1,0 +1,29 @@
+{
+  "name": "errors.contract-unsupported",
+  "request": {
+    "method": "GET",
+    "path": "/api/v1/edge/capabilities",
+    "headers": {
+      "X-Edge-Contract-Version": "2"
+    }
+  },
+  "response": {
+    "status": 426,
+    "body": {
+      "error": {
+        "code": "EDGE_CONTRACT_UNSUPPORTED",
+        "message": "Edge contract version is not supported by this server.",
+        "details": {
+          "direction": "server_too_old",
+          "supported_contract_versions": [
+            1
+          ],
+          "client_contract_version": 2
+        }
+      }
+    }
+  },
+  "preconditions": [
+    "server supports only contract version 1"
+  ]
+}

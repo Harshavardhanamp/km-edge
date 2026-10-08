@@ -51,3 +51,8 @@ export function respond(fixtureName: string): { status: number; body: unknown } 
   const f = fixtureByName(fixtureName);
   return f.response;
 }
+
+/** KK-2.2 E2: a contract v2 fixture by its path, e.g. v2Fixture('records/create.structured.pending'). */
+export function v2Fixture(relPath: string): Fixture {
+  return JSON.parse(fs.readFileSync(path.join(__dirname, 'fixtures/edge-sync/v2', `${relPath}.json`), 'utf8')) as Fixture;
+}

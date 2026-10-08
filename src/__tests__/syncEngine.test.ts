@@ -210,8 +210,11 @@ describe('UPDATE — record has gks_id but no pending content change', () => {
     );
     expect(delta?.status).toBe('ACKNOWLEDGED');
 
-    // Only 3 fetch calls: capabilities, health, syncStatus (no record API call)
-    expect(fetchSpy).toHaveBeenCalledTimes(3);
+    // No record API call: capabilities, health, syncStatus, then (KK-2.2 E3.2) the identity-cache refresh.
+    const urls = fetchSpy.mock.calls.map((c: unknown[]) => String(c[0]));
+    expect(urls.some((u: string) => u.includes('/api/v1/edge/records'))).toBe(false);
+    expect(fetchSpy).toHaveBeenCalledTimes(4);
+    expect(urls[3]).toContain('/api/v1/edge/identities');
   });
 });
 
@@ -251,8 +254,11 @@ describe('DELETE — gks_id null (never synced)', () => {
     const result = await runSync();
     expect(result.synced).toBe(1);
 
-    // Only capabilities, health, syncStatus
-    expect(fetchSpy).toHaveBeenCalledTimes(3);
+    // No record API call: capabilities, health, syncStatus, then (KK-2.2 E3.2) the identity-cache refresh.
+    const urls = fetchSpy.mock.calls.map((c: unknown[]) => String(c[0]));
+    expect(urls.some((u: string) => u.includes('/api/v1/edge/records'))).toBe(false);
+    expect(fetchSpy).toHaveBeenCalledTimes(4);
+    expect(urls[3]).toContain('/api/v1/edge/identities');
   });
 });
 

@@ -1,0 +1,33 @@
+{
+  "name": "suggest.unavailable",
+  "request": {
+    "method": "POST",
+    "path": "/api/v1/edge/suggest",
+    "headers": {
+      "Authorization": "Bearer test-token-001",
+      "X-Edge-Contract-Version": "2",
+      "X-Edge-Device-Id": "DEV-E2"
+    },
+    "body": {
+      "content": "A quiet day"
+    }
+  },
+  "response": {
+    "status": 200,
+    "body": {
+      "contract_version": 2,
+      "title": "A quiet day",
+      "summary": null,
+      "type": "JOURNAL",
+      "importance": "NORMAL",
+      "topics": [],
+      "people": [],
+      "place": null,
+      "dates": [],
+      "generated": false
+    }
+  },
+  "preconditions": [
+    "the local model is unavailable"
+  ]
+}

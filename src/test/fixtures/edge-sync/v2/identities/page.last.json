@@ -1,0 +1,43 @@
+{
+  "name": "identities.page.last",
+  "request": {
+    "method": "GET",
+    "path": "/api/v1/edge/identities?limit=3&after=topic:TOPIC-000003:School",
+    "headers": {
+      "Authorization": "Bearer test-token-001",
+      "X-Edge-Contract-Version": "2",
+      "X-Edge-Device-Id": "DEV-E2"
+    }
+  },
+  "response": {
+    "status": 200,
+    "body": {
+      "contract_version": 2,
+      "items": [
+        {
+          "identity_id": "TOPIC-000004",
+          "kind": "topic",
+          "name": "Admin plans",
+          "distinction": null
+        },
+        {
+          "identity_id": "PER-000001",
+          "kind": "person",
+          "name": "Pri",
+          "distinction": null
+        },
+        {
+          "identity_id": "PER-000001",
+          "kind": "person",
+          "name": "Priya",
+          "distinction": null
+        }
+      ],
+      "total": 6,
+      "next": null
+    }
+  },
+  "preconditions": [
+    "the cursor of the page before the last"
+  ]
+}

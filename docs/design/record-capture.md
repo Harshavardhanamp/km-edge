@@ -183,3 +183,21 @@ Record detail screen
   content_sha256: sha256(content),
 }
 ```
+
+---
+
+## Amendment 2026-10-08 — Structure at capture (KK-2.2 Packet E2, KM-Edge 2.1)
+
+Source of truth: GKS `docs/design/KK-EDGE-STRUCTURE-AT-CAPTURE-DESIGN.md` (FROZEN 2026-10-08) and `docs/design/KK-EDGE-SYNC-CONTRACT-V2.md`. This amendment overrides the sections above where they differ.
+
+- **Two steps.** Step 1 is the existing editor: type, content, event details and attachments. **Save** opens step 2, the review card, with title, summary, type, importance, Topics, People, Place, dates (each with a year) and visibility. **Confirm** writes the record; **Back** returns to step 1. Discard asks first.
+- **Confirm gate** (`src/lib/capture/reviewCard.ts`): at least one Topic, Person or Place, and every date has a year.
+- **Names** come from `IdentityPicker` over the identity cache, or are typed. A typed name that is not cached is kept as a label (`identity_id: null`) for GKS to match.
+- **Suggestions** come from `POST /edge/suggest`, with a 3 s deadline. A late answer fills only untouched fields.
+- **Field origins** are `user`, `accepted_ai_suggestion` or `edited_ai_suggestion`, computed per field on the card.
+- **Draft:** the `capture_draft` row is written on every change, reopened on the next visit, and cleared by Confirm, Discard or sign-out.
+
+**Data written on Confirm** adds `structure_json`:
+`{ summary, topics[], people[], place, dates[], origins }`. Each name is `{ identity_id | null, label }`. `tags` keeps the chosen Topic names for display on the phone.
+
+**Record detail** shows Topics, People and Place. While GKS has names waiting (`resolution_json`), it shows "Waiting for the desktop to match: …".

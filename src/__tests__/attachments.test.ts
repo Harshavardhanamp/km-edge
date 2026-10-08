@@ -1,3 +1,4 @@
+import { EDGE_CONTRACT_VERSION } from '../lib/contract';
 /**
  * K5 — attachment upload (contract §6) and capabilities-driven validation.
  * uploadAsync is driven through the expo-file-system mock; fetch is routed by URL.
@@ -65,7 +66,7 @@ describe('uploadAttachment — one multipart call stores and binds', () => {
     await uploadAttachment(BASE, 'edge-1', ATT);
     const h = calls[0].opts.headers;
     expect(h['Authorization']).toBe('Bearer tok-test');
-    expect(h['X-Edge-Contract-Version']).toBe('1');
+    expect(h['X-Edge-Contract-Version']).toBe(String(EDGE_CONTRACT_VERSION));
     expect(h['X-Edge-Device-Id']).toBe('dev-001');
     expect(h['Content-Type']).toBeUndefined();
   });

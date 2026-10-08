@@ -7,7 +7,8 @@ import * as path from 'path';
 import { edgeErrorMap, mapError } from '../lib/errors/edgeErrorMap';
 
 const FIXTURE_DIR = path.join(__dirname, '../test/fixtures/edge-sync/v1');
-const SILENT_CODES = new Set(['EDGE_TEST_MODE_ACTIVE', 'EDGE_SERVER_ERROR']);
+// EDGE_IDENTITY_NOT_FOUND (contract v2 §10) is informational: the capture landed, nothing to tell the user.
+const SILENT_CODES = new Set(['EDGE_TEST_MODE_ACTIVE', 'EDGE_SERVER_ERROR', 'EDGE_IDENTITY_NOT_FOUND']);
 
 function collectErrorCodes(dir: string): Set<string> {
   const codes = new Set<string>();

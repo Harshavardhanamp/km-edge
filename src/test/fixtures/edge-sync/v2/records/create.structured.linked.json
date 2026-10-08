@@ -1,0 +1,46 @@
+{
+  "name": "records.create.structured.linked",
+  "request": {
+    "method": "POST",
+    "path": "/api/v1/edge/records",
+    "headers": {
+      "Authorization": "Bearer test-token-001",
+      "X-Edge-Contract-Version": "2",
+      "X-Edge-Device-Id": "DEV-E2"
+    },
+    "body": {
+      "edge_id": "e2-fce7f8c403bd",
+      "record_type": "JOURNAL",
+      "content": "Family lunch",
+      "content_sha256": "79bc86e9b5f355cea8e2061b68b348a65ffa96e1e1c6812659eb8f963b73fdbd",
+      "captured_at": "2026-10-08T09:00:00Z",
+      "title": "Movie night",
+      "title_origin": "accepted_ai_suggestion",
+      "topics": [
+        {
+          "label": "family"
+        }
+      ],
+      "people": [
+        {
+          "identity_id": "PER-000001",
+          "label": "Priya"
+        }
+      ]
+    }
+  },
+  "response": {
+    "status": 201,
+    "body": {
+      "state": "ACCEPTED",
+      "edge_id": "e2-fce7f8c403bd",
+      "gks_id": "KNOW-000001",
+      "content_sha256": "79bc86e9b5f355cea8e2061b68b348a65ffa96e1e1c6812659eb8f963b73fdbd",
+      "resolution": [],
+      "contract_version": 2
+    }
+  },
+  "preconditions": [
+    "Family and Priya exist exactly once"
+  ]
+}

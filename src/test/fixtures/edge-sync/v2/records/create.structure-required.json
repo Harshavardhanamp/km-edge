@@ -1,0 +1,40 @@
+{
+  "name": "records.create.structure-required",
+  "request": {
+    "method": "POST",
+    "path": "/api/v1/edge/records",
+    "headers": {
+      "Authorization": "Bearer test-token-001",
+      "X-Edge-Contract-Version": "2",
+      "X-Edge-Device-Id": "DEV-E2"
+    },
+    "body": {
+      "edge_id": "e2-291ba2b413db",
+      "record_type": "JOURNAL",
+      "content": "Nothing filed",
+      "content_sha256": "351653c156eb83c117ee91c0d44f783d6fe771f594513be06129577baa9bf87c",
+      "captured_at": "2026-10-08T09:00:00Z",
+      "title": "Movie night",
+      "title_origin": "accepted_ai_suggestion"
+    }
+  },
+  "response": {
+    "status": 422,
+    "body": {
+      "error": {
+        "code": "EDGE_VALIDATION",
+        "message": "The request is not valid.",
+        "details": {
+          "fields": [
+            "topics",
+            "people",
+            "place"
+          ]
+        }
+      }
+    }
+  },
+  "preconditions": [
+    "no topics, people or place"
+  ]
+}
